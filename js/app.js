@@ -4,7 +4,7 @@ let DB_BALNUS = new Set();
 
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
-    try {
+  try {
     const res = await fetch(url);
     const text = await res.text();
     const lines = text.split(/\r?\n/).filter(l => l.trim());
