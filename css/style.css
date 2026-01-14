@@ -212,7 +212,7 @@ h1{
   font-size:14px;
   border-radius:16px;
   border:none;
-  padding:18px;
+  padding:18px;   
   background:rgba(0,0,0,.25);
   color:inherit;
   box-sizing:border-box;
@@ -238,22 +238,6 @@ h1{
     0 10px 25px rgba(0,0,0,.35),
     inset 0 1px 0 rgba(255,255,255,.45);
   transition:.25s ease;
-}
-
-.copy-btn{
-  padding:8px 16px;
-  border-radius:999px;
-  border:none;
-  cursor:pointer;
-  font-weight:700;
-  background:linear-gradient(135deg,#22d3ee,#a78bfa);
-  color:#000;
-  transition:.2s;
-}
-
-.copy-btn:hover{
-  transform:scale(1.05);
-  box-shadow:0 6px 20px rgba(0,0,0,.3);
 }
 
 #eskalasi button:hover{
@@ -298,6 +282,24 @@ h1{
   align-items:center;
   margin-bottom:12px;
 }
+
+.copy-btn{
+  padding:8px 16px;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  background:linear-gradient(135deg,#22d3ee,#a78bfa);
+  color:#000;
+  transition:.2s;
+}
+
+.copy-btn:hover{
+  transform:scale(1.05);
+  box-shadow:0 6px 20px rgba(0,0,0,.3);
+}
+
+/* ===== WATERMARK ===== */
 /* ===== WATERMARK (BRIGHT VERSION) ===== */
 .watermark{
   position:fixed;
@@ -327,4 +329,37 @@ h1{
     0 0 6px rgba(34,211,238,.9),
     0 0 14px rgba(167,139,250,.9),
     0 0 28px rgba(244,114,182,.8);
+}
+
+/* ===== CRA ===== */
+#cra .upload {
+  margin-bottom: 16px;
+}
+
+#craTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#craTable th,
+#craTable td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  vertical-align: top;
+}
+
+#craTable th {
+  background: linear-gradient(135deg,var(--accent),var(--accent2));
+  color: #000;
+  font-weight: 900;
+}
+
+#craTable tr:nth-child(even) {
+  background: rgba(255,255,255,.04);
+}
+
+.cra-lokasi {
+  font-style: italic;
+  opacity: .85;
 }
