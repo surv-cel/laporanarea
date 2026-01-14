@@ -58,6 +58,12 @@ h1{
   letter-spacing:.3px;
 }
 
+.total{background:#22c55e;color:#000}
+.bb{background:#facc15;color:#000}
+.ip{background:#60a5fa;color:#000}
+.odc{background:#34d399;color:#000}
+.odp{background:#fb7185;color:#000}
+
 /* ===== HEADER ===== */
 .header{
   display:flex;
@@ -234,6 +240,22 @@ h1{
   transition:.25s ease;
 }
 
+.copy-btn{
+  padding:8px 16px;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  background:linear-gradient(135deg,#22d3ee,#a78bfa);
+  color:#000;
+  transition:.2s;
+}
+
+.copy-btn:hover{
+  transform:scale(1.05);
+  box-shadow:0 6px 20px rgba(0,0,0,.3);
+}
+
 #eskalasi button:hover{
   transform:translateY(-3px) scale(1.02);
   box-shadow:
@@ -243,4 +265,66 @@ h1{
 
 #eskalasi button:active{
   transform:translateY(0);
+}
+
+/* SEARCH BAR */
+.search-area{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+   
+.search-area input{  
+  padding:10px 14px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:inherit;
+  width:240px;
+}
+
+.search-area button{
+  padding:10px 18px;
+  border-radius:999px;
+  border:none;
+  font-weight:800;
+  cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+}
+
+.section-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+/* ===== WATERMARK (BRIGHT VERSION) ===== */
+.watermark{
+  position:fixed;
+  bottom:18px;
+  right:24px;
+
+  font-size:15px;
+  font-weight:900;
+  letter-spacing:3.5px;
+
+  opacity:0.65; /* LEBIH TERANG */
+  pointer-events:none;
+  user-select:none;
+  z-index:9999;
+
+  background:linear-gradient(
+    90deg,
+    #22d3ee,
+    #60a5fa,
+    #a78bfa,
+    #f472b6
+  );
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+
+  text-shadow:
+    0 0 6px rgba(34,211,238,.9),
+    0 0 14px rgba(167,139,250,.9),
+    0 0 28px rgba(244,114,182,.8);
 }
