@@ -97,8 +97,10 @@ function renderData(data) {
   let noJ = 1, noB = 1;
 
   data.forEach(row => {
-	  const summary = (row["SUMMARY"] || "").toUpperCase();
-	  total++;
+	   const summary = row["SUMMARY"] || "";
+	   const update  = row["WORKLOG SUMMARY"] || "-";
+	   const zone    = (row["WORKZONE"] || "").toUpperCase();
+      total++; 
 
 	  if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) {
 		bb++;
@@ -136,8 +138,8 @@ function renderData(data) {
 	document.getElementById("gponCount").textContent = `GPON : ${g}`;
 	document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
 	document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
-	document.getElementById("odcCount").textContent = `ODC : ${odc}`;
-	document.getElementById("odpCount").textContent = `ODP : ${odp}`;
+	//document.getElementById("odcCount").textContent = `ODC : ${odc}`;
+	//document.getElementById("odpCount").textContent = `ODP : ${odp}`;
 
 
   if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
