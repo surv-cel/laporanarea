@@ -21,6 +21,9 @@ async function loadWorkzones() {
 
 // ================= CSV PARSER =================
 function parseCSV(text) {
+  // hapus BOM UTF-8 jika ada
+  text = text.replace(/^\uFEFF/, '');
+
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return [];
 
@@ -28,12 +31,39 @@ function parseCSV(text) {
   if (lines[0].includes(';')) delimiter = ';';
   else if (lines[0].includes('\t')) delimiter = '\t';
 
-  const headers = lines.shift().split(delimiter).map(h => h.trim());
+  const parseLine = (line) => {
+    const result = [];
+    let cur = '';
+    let inQuotes = false;
 
-  return lines.map(l => {
-    const cols = l.split(delimiter);
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      const next = line[i + 1];
+
+      if (c === '"' && next === '"' && inQuotes) {
+        cur += '"';
+        i++;
+      } else if (c === '"') {
+        inQuotes = !inQuotes;
+      } else if (c === delimiter && !inQuotes) {
+        result.push(cur);
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result.map(v => v.trim());
+  };
+
+  const headers = parseLine(lines.shift());
+
+  return lines.map(line => {
+    const cols = parseLine(line);
     const o = {};
-    headers.forEach((h, i) => o[h] = cols[i]?.trim() || '');
+    headers.forEach((h, i) => {
+      o[h] = cols[i] ?? '';
+    });
     return o;
   });
 }
