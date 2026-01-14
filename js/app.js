@@ -96,7 +96,7 @@ function renderData(data) {
   let odc = 0, odp = 0;
   let noJ = 1, noB = 1;
 
-  data.forEach(row => {
+   data.forEach(row => {
 	   const summary = row["SUMMARY"] || "";
 	   const update  = row["WORKLOG SUMMARY"] || "-";
 	   const zone    = (row["WORKZONE"] || "").toUpperCase();
@@ -116,8 +116,8 @@ function renderData(data) {
 	  if (summary.includes("ODC")) odc++;
 	  if (summary.includes("ODP")) odp++;
 
-    const zone = (row["WORKZONE"] || row["WORK ZONE"] || "").toUpperCase();
-		const update = row["UPDATE"] || row["ACTION"] || "-";
+    // const zone = (row["WORKZONE"] || row["WORK ZONE"] || "").toUpperCase();
+		// const update = row["UPDATE"] || row["ACTION"] || "-";
 
 		const card = document.createElement("div");
 		card.className = "card";
@@ -138,8 +138,8 @@ function renderData(data) {
 	document.getElementById("gponCount").textContent = `GPON : ${g}`;
 	document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
 	document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
-	//document.getElementById("odcCount").textContent = `ODC : ${odc}`;
-	//document.getElementById("odpCount").textContent = `ODP : ${odp}`;
+	// document.getElementById("odcCount").textContent = `ODC : ${odc}`;
+	// document.getElementById("odpCount").textContent = `ODP : ${odp}`;
 
 
   if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
@@ -294,6 +294,197 @@ function copyEskalasi() {
   document.execCommand('copy');
   alert('Data eskalasi berhasil di-copy');
 }
+
+
+// ================= CRA MODULE =================
+
+// simpan data CRA hasil olahan
+let CRA_DATA = [];
+
+// helper: parse CSV sederhana
+function parseCRACSV(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
+
+  let delimiter = ',';
+  if (lines[0].includes(';')) delimiter = ';';
+  if (lines[0].includes('\t')) delimiter = '\t';
+
+  const headers = lines.shift().split(delimiter).map(h => h.trim());
+
+  return lines.map(line => {
+    const cols = line.split(delimiter);
+    const o = {};
+    headers.forEach((h, i) => {
+      o[h] = (cols[i] || '').trim();
+    });
+    return o;
+  });
+}
+
+// ambil angka CRA (CRA.146475 -> 146475)
+function getCRANumber(noCRA = '') {
+  const m = noCRA.match(/CRA\.(\d+)/i);
+  return m ? m[1] : null;
+}
+
+// render tabel CRA
+function renderCRA(data) {
+  const tbody = document.querySelector('#craTable tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  if (!data.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="15" class="empty">Data CRA tidak ditemukan</td>
+      </tr>`;
+    return;
+  }
+
+  let no = 1;
+
+  data.forEach(row => {
+    const trMain = document.createElement('tr');
+    trMain.innerHTML = `
+      <td>${no++}</td>
+      <td>${row.noCRA}</td>
+      <td>${row.deskripsi}</td>
+      <td>${row.lokasi.join(', ')}</td>
+      <td>${row.regional}</td>
+      <td>${row.kota}</td>
+      <td>${row.segment}</td>
+      <td>${row.pic}</td>
+      <td>${row.tanggal}</td>
+      <td>${row.waktu}</td>
+      <td>${row.durasi}</td>
+      <td>${row.tipe}</td>
+      <td>${row.pelaksana}</td>
+      <td>${row.metode}</td>
+      <td>${row.crq}</td>
+    `;
+    tbody.appendChild(trMain);
+
+    // baris lokasi tambahan (penanda)
+    const trLokasi = document.createElement('tr');
+    trLokasi.innerHTML = `
+      <td></td>
+      <td colspan="14" class="cra-lokasi">
+        Lokasi : ${row.lokasi.join(', ')}
+      </td>
+    `;
+    tbody.appendChild(trLokasi);
+  });
+}
+
+// proses data CRA
+function processCRA(rawData) {
+  const map = new Map();
+
+  rawData.forEach(row => {
+    const regional = (row['REGIONAL'] || '').toUpperCase();
+    if (!regional.includes('REG 5')) return;
+
+    const noCRA = row['No CRA'] || row['NO CRA'] || '';
+    const key = getCRANumber(noCRA);
+    if (!key) return;
+
+    const lokasiRaw = row['LOKASI'] || '';
+    const lokasiArr = lokasiRaw
+      .split(',')
+      .map(l => l.trim())
+      .filter(Boolean);
+
+    if (!map.has(key)) {
+      map.set(key, {
+        noCRA,
+        deskripsi: row['DESKRIPSI'] || row['DESCRIPTION'] || '',
+        lokasi: [...lokasiArr],
+        regional: row['REGIONAL'] || '',
+        kota: row['KOTA'] || row['CITY'] || '',
+        segment: row['SEGMENT'] || '',
+        pic: row['PIC'] || '',
+        tanggal: row['TANGGAL'] || row['DATE'] || '',
+        waktu: row['WAKTU'] || row['JAM'] || '',
+        durasi: row['DURASI'] || '',
+        tipe: row['TIPE'] || '',
+        pelaksana: row['PELAKSANA'] || '',
+        metode: row['METODE'] || '',
+        crq: row['CRQ'] || ''
+      });
+    } else {
+      // gabungkan lokasi jika CRA sama
+      const existing = map.get(key);
+      lokasiArr.forEach(l => {
+        if (!existing.lokasi.includes(l)) {
+          existing.lokasi.push(l);
+        }
+      });
+    }
+  });
+
+  CRA_DATA = Array.from(map.values());
+  renderCRA(CRA_DATA);
+}
+
+// event upload file CRA
+document.getElementById('craFile')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const text = reader.result;
+    const data = parseCRACSV(text);
+    processCRA(data);
+  };
+
+  reader.readAsText(file);
+});
+
+// ================= CRA EXCEL SUPPORT =================
+
+function parseCRAExcel(arrayBuffer) {
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+
+  // convert sheet to JSON
+  return XLSX.utils.sheet_to_json(sheet, {
+    defval: '',
+    raw: false
+  });
+}
+
+// override event upload CRA (CSV + XLS)
+document.getElementById('craFile')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  // === EXCEL ===
+  if (ext === 'xls' || ext === 'xlsx') {
+    reader.onload = evt => {
+      const data = parseCRAExcel(evt.target.result);
+      processCRA(data);
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  // === CSV (fallback) ===
+  reader.onload = () => {
+    const text = reader.result;
+    const data = parseCRACSV(text);
+    processCRA(data);
+  };
+  reader.readAsText(file);
+});
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
