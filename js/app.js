@@ -2,6 +2,9 @@
 let DB_JATIM = new Set();
 let DB_BALNUS = new Set();
 
+// SIMPAN DATA CSV ASLI
+let ALL_DATA = [];
+
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
   try {
@@ -13,7 +16,6 @@ async function loadWorkzones() {
       if (jatim) DB_JATIM.add(jatim.trim().toUpperCase());
       if (balnus) DB_BALNUS.add(balnus.trim().toUpperCase());
     });
-    console.log('Workzones loaded:', DB_JATIM.size, DB_BALNUS.size);
   } catch (err) {
     console.error('Gagal load workzones:', err);
   }
@@ -74,53 +76,118 @@ document.getElementById("fileInput")?.addEventListener("change", e => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => processData(reader.result);
+  reader.onload = () => {
+    ALL_DATA = parseCSV(reader.result);
+    renderData(ALL_DATA);
+  };
   reader.readAsText(file);
 });
 
-function processData(csv) {
-  const data = parseCSV(csv);
+// ================= RENDER DATA (ASLI + DIPAKAI SEARCH) =================
+function renderData(data) {
   const jatimBox = document.querySelector("#jatim .content");
   const balnusBox = document.querySelector("#balnus .content");
   jatimBox.innerHTML = "";
   balnusBox.innerHTML = "";
 
+  let total = 0;
+  let bb = 0, ip = 0;
   let d = 0, f = 0, g = 0;
+  let odc = 0, odp = 0;
   let noJ = 1, noB = 1;
 
   data.forEach(row => {
-    const summary = row["SUMMARY"] || "";
-    const update = row["WORKLOG SUMMARY"] || "-";
-    const zone = (row["WORKZONE"] || "").toUpperCase();
+	  const summary = (row["SUMMARY"] || "").toUpperCase();
+	  total++;
 
-    if (summary.includes("DISTRIBUSI")) d++;
-    if (summary.includes("FEEDER")) f++;
-    if (summary.includes("GPON")) g++;
+	  if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) {
+		bb++;
+	  }
 
-    const card = document.createElement("div");
-    card.className = "card";
+	  if (summary.includes("(REPAIR) IP T3") || summary.includes("(RECOVERY) IP T3")) {
+		ip++;
+	  }
 
-    if (DB_JATIM.has(zone)) {
-      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><br><b>Update :</b> ${update}`;
-      jatimBox.appendChild(card);
-    } else if (DB_BALNUS.has(zone)) {
-      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><br><b>Update :</b> ${update}`;
-      balnusBox.appendChild(card);
-    }
-  });
+	  if (summary.includes("DISTRIBUSI")) d++;
+	  if (summary.includes("FEEDER")) f++;
+	  if (summary.includes("GPON")) g++;
+	  if (summary.includes("ODC")) odc++;
+	  if (summary.includes("ODP")) odp++;
 
-  document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
-  document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
-  document.getElementById("gponCount").textContent = `GPON : ${g}`;
+    const zone = (row["WORKZONE"] || row["WORK ZONE"] || "").toUpperCase();
+		const update = row["UPDATE"] || row["ACTION"] || "-";
 
-  if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Tidak ada data JATIM</div>`;
-  if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Tidak ada data BALNUS</div>`;
+		const card = document.createElement("div");
+		card.className = "card";
+
+		if (DB_JATIM.has(zone)) {
+		  card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><br><b>Update :</b> ${update}`;
+		  jatimBox.appendChild(card);
+		} 
+		else if (DB_BALNUS.has(zone)) {
+		  card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><br><b>Update :</b> ${update}`;
+		  balnusBox.appendChild(card);
+	}
+});
+
+	document.getElementById("totalCount").textContent = `TOTAL : ${total}`;
+	document.getElementById("bbCount").textContent = `BB : ${bb}`;
+	document.getElementById("ipCount").textContent = `IP : ${ip}`;
+	document.getElementById("gponCount").textContent = `GPON : ${g}`;
+	document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
+	document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
+	document.getElementById("odcCount").textContent = `ODC : ${odc}`;
+	document.getElementById("odpCount").textContent = `ODP : ${odp}`;
+
+
+  if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
+  if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
 }
+
+// ================= SEARCH =================
+document.getElementById("btnSearch")?.addEventListener("click", () => {
+  const keyword = document.getElementById("searchInput").value.trim();
+
+  if (!keyword) {
+    renderData(ALL_DATA);
+    return;
+  }
+
+  const incList = keyword
+    .split(',')
+    .map(i => i.trim().toUpperCase())
+    .filter(Boolean);
+
+  const filtered = ALL_DATA.filter(row =>
+    incList.includes((row["INCIDENT"] || "").toUpperCase())
+  );
+
+  renderData(filtered);
+});
 
 // ================= THEME =================
 document.getElementById("themeToggle")?.addEventListener("click", () => {
   document.body.classList.toggle("light");
 });
+
+
+// =============COPY JATIM BALNUS =============
+function copyColumn(type){
+  const box = document.querySelector(`#${type} .content`);
+  if (!box || !box.children.length) {
+    alert('Tidak ada data untuk di-copy');
+    return;
+  }
+
+  let text = '';
+  box.querySelectorAll('.card').forEach(card=>{
+    text += card.innerText.trim() + '\n\n';
+  });
+
+  navigator.clipboard.writeText(text.trim()).then(()=>{
+    alert(`Data ${type.toUpperCase()} berhasil di-copy`);
+  });
+}
 
 // ================= ESKALASI =================
 function cleanText(t) {
@@ -134,6 +201,25 @@ function pickBetween(text, start, end) {
   if (!end) return text.substring(from).trim();
   const e = text.indexOf(end, from);
   return (e === -1 ? text.substring(from) : text.substring(from, e)).trim();
+}
+
+function formatMultiLineBlock(text) {
+  if (!text || text === '-') return '-';
+
+  return text
+    .replace(/NODEB\s*:\s*(\d+)/i, 'NODEB : $1')
+    .replace(/BROADBAND\s*:\s*(\d+)/i, '\nBROADBAND : $1')
+    .replace(/EBIS\s*:\s*(\d+)/i, '\nEBIS : $1')
+    .replace(/WIFI\s*:\s*(\d+)/i, '\nWIFI : $1')
+    .trim();
+}
+
+function cleanCC(text) {
+  return text
+    .split('Surveillance')[0]   // potong sebelum Surveillance
+    .split('REPORT INTERNAL')[0]
+    .split('Contact Center')[0]
+    .trim();
 }
 
 function formatAction(text) {
@@ -158,11 +244,15 @@ Duration Time : ${pickBetween(raw,'Duration Time :','Headline')}
 
 Headline : ${pickBetween(raw,'Headline :','Impacted Service')}
 
-Impacted Service :
-${pickBetween(raw,'Impacted Service :','Pelanggan Terganggu')}
+*Impacted Service* :
+${formatMultiLineBlock(
+  pickBetween(raw,'Impacted Service :','Pelanggan Terganggu')
+)}
 
-Pelanggan Terganggu :
-${pickBetween(raw,'Pelanggan Terganggu :','Perangkat Terganggu')}
+*Pelanggan Terganggu* :
+${formatMultiLineBlock(
+  pickBetween(raw,'Pelanggan Terganggu :','Perangkat Terganggu')
+)}
 
 Perangkat Terganggu :
 ${pickBetween(raw,'Perangkat Terganggu :','Penyebab gangguan')}
@@ -177,7 +267,7 @@ PIC :
 ${pickBetween(raw,'PIC :','CC')}
 
 CC :
-${pickBetween(raw,'CC :','Eskalasi')}
+${cleanCC(pickBetween(raw,'CC :','Surveillance'))}
 
 Eskalasi :
 ${pickBetween(raw,'Eskalasi :','Surveillance')}
@@ -194,6 +284,7 @@ TSEL : 0811-3081-500
 
   document.getElementById('eskOutput').value = result;
 }
+
 
 function copyEskalasi() {
   const o = document.getElementById('eskOutput');
