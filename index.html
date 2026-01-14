@@ -12,19 +12,32 @@
   <h1>📊 Laporan GAMAS (CSV)</h1>
 </div>
 
-
 <div class="header">
   <div class="upload">
     <input type="file" id="fileInput" accept=".csv" />
   </div>
 
-  <div class="stats">
-    <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
-    <div class="badge feeder" id="feederCount">FEEDER : 0</div>
-    <div class="badge gpon" id="gponCount">GPON : 0</div>
-  </div>
+  <!-- 🔍 SEARCH BAR (BARU) -->
+  <div class="search-area">
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search INC (contoh: INC123, INC456)"
+    />
+    <button id="btnSearch">OK</button>
+</div>
 
-  <div class="theme-area">
+<div class="stats">
+	  <div class="badge total" id="totalCount">TOTAL : 0</div>
+	  <div class="badge bb" id="bbCount">BB : 0</div>
+	  <div class="badge ip" id="ipCount">IP : 0</div>
+	  <div class="badge gpon" id="gponCount">GPON : 0</div>
+	  <div class="badge feeder" id="feederCount">FEEDER : 0</div>
+	  <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
+</div>
+
+
+<div class="theme-area">
     <div class="toggle" id="themeToggle">🌙 Dark</div>
     <div class="trademark">
       <span>KERJO O REK</span>
@@ -33,21 +46,28 @@
   </div>
 </div>
 
-<div class="section" id="jatim">
-  <h2>JATIM</h2>
+<div id="jatim" class="section">
+  <div class="section-header">
+    <h2>JATIM</h2>
+    <button class="copy-btn" onclick="copyColumn('jatim')">COPY</button>
+  </div>
   <div class="content"></div>
 </div>
 
-<div class="section" id="balnus">
-  <h2>BALNUS</h2>
+<div id="balnus" class="section">
+  <div class="section-header">
+    <h2>BALNUS</h2>
+    <button class="copy-btn" onclick="copyColumn('balnus')">COPY</button>
+  </div>
   <div class="content"></div>
 </div>
 
-  <!-- ================= CONVERTER ESKALASI ================= -->
+
+<!-- ================= CONVERTER ESKALASI ================= -->
 <section class="section" id="eskalasi">
   <div class="page-title">
-  <h2>🔁 CONVERTER ESKALASI</h2>
-</div>
+    <h2>🔁 CONVERTER ESKALASI</h2>
+  </div>
 
   <div class="grid2">
     <div class="card">
@@ -63,8 +83,7 @@
     </div>
   </div>
 </section>
-
-
+<div class="watermark">SOEKMA PROPERTI</div>
 <script src="js/app.js"></script>
 </body>
 </html>
