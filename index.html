@@ -25,19 +25,19 @@
       placeholder="Search INC (contoh: INC123, INC456)"
     />
     <button id="btnSearch">OK</button>
-</div>
+  </div>
 
-<div class="stats">
+	<div class="stats">
 	  <div class="badge total" id="totalCount">TOTAL : 0</div>
 	  <div class="badge bb" id="bbCount">BB : 0</div>
 	  <div class="badge ip" id="ipCount">IP : 0</div>
 	  <div class="badge gpon" id="gponCount">GPON : 0</div>
 	  <div class="badge feeder" id="feederCount">FEEDER : 0</div>
 	  <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
-</div>
+	</div>
 
 
-<div class="theme-area">
+  <div class="theme-area">
     <div class="toggle" id="themeToggle">🌙 Dark</div>
     <div class="trademark">
       <span>KERJO O REK</span>
@@ -83,7 +83,48 @@
     </div>
   </div>
 </section>
+
+</section>
+
+<!-- ================= CRA ================= -->
+<section class="section" id="cra">
+  <div class="page-title">
+    <h2>📑 CRA</h2>
+  </div>
+
+  <div class="upload">
+    <input type="file" id="craFile" accept=".csv,.xls,.xlsx">
+  </div>
+
+  <div class="cra-result">
+    <table id="craTable">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>No CRA</th>
+          <th>Deskripsi</th>
+          <th>Lokasi</th>
+          <th>Regional</th>
+          <th>Kota</th>
+          <th>Segment</th>
+          <th>PIC</th>
+          <th>Tanggal</th>
+          <th>Waktu</th>
+          <th>Durasi</th>
+          <th>Tipe</th>
+          <th>Pelaksana</th>
+          <th>Metode</th>
+          <th>CRQ</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+   
 <div class="watermark">SOEKMA PROPERTI</div>
+<!-- SheetJS for Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
