@@ -91,15 +91,19 @@
   <h2>📋 CRA (Reg 5)</h2>
 
   <div class="cra-actions">
-    <label class="upload-btn">
-      📂 Upload CRA
-      <input type="file" id="craFile" hidden />
-    </label>
+  <label class="upload-box">
+    <input type="file" id="craFile" hidden />
+    <span>📂 Upload CRA</span>
+  </label>
 
-    <button id="btnExportCRA" class="export-btn">
-      ⬇ Export Excel
-    </button>
-  </div>
+  <button id="btnExportCRA" class="btn primary">
+    📊 Export Excel
+  </button>
+
+  <button id="btnExportTXT" class="btn dark">
+    📝 Export TXT
+  </button>
+</div>
 
   <div class="cra-table-wrap">
     <table id="craTable">
@@ -129,4 +133,3 @@
 <script src="js/app.js"></script>
 </body>
 </html>
-
