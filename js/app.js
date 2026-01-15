@@ -426,8 +426,10 @@ function processCRA(rawData) {
 
   rawData.forEach(row => {
     const regional = (row['REGIONAL'] || '').toUpperCase();
-    if (!regional.includes('REG 5')) return;
-
+    //if (!regional.includes('REG 5')) return;
+	// hanya ambil Reg 5 atau All Reg
+	if (!regional.includes('REG 5') && !regional.includes('ALL REG')) return;
+    
     const noCRA = row['No CRA'] || row['NO CRA'] || '';
     const key = getCRANumber(noCRA);
     if (!key) return;
