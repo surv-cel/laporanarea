@@ -4,6 +4,7 @@ let DB_BALNUS = new Set();
 
 // SIMPAN DATA CSV ASLI
 let ALL_DATA = [];
+let CRA_RESULT = [];
 
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
@@ -301,6 +302,13 @@ function copyEskalasi() {
 // simpan data CRA hasil olahan
 let CRA_DATA = [];
 
+//TAMBAHAN ONSKEJUL
+function getStatusClass(val){
+  if (val === 'ON SCHEDULE') return 'on';
+  if (val === 'CANCEL') return 'cancel';
+  return 'wait';
+}
+
 // helper: parse CSV sederhana
 function parseCRACSV(text) {
   text = text.replace(/^\uFEFF/, '');
@@ -339,7 +347,7 @@ function renderCRA(data) {
   if (!data.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="15" class="empty">Data CRA tidak ditemukan</td>
+        <td colspan="10" class="empty">Data CRA tidak ditemukan</td>
       </tr>`;
     return;
   }
@@ -347,39 +355,72 @@ function renderCRA(data) {
   let no = 1;
 
   data.forEach(row => {
-    const trMain = document.createElement('tr');
-    trMain.innerHTML = `
+    if (!row.status) row.status = 'BELUM DIISI';
+
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
       <td>${no++}</td>
+
+      <td>
+        <select class="cra-status ${getStatusClass(row.status)}">
+          <option ${row.status==='ON SCHEDULE'?'selected':''}>ON SCHEDULE</option>
+          <option ${row.status==='BELUM DIISI'?'selected':''}>BELUM DIISI</option>
+          <option ${row.status==='CANCEL'?'selected':''}>CANCEL</option>
+        </select>
+      </td>
+
       <td>${row.noCRA}</td>
       <td>${row.deskripsi}</td>
       <td>${row.lokasi.join(', ')}</td>
       <td>${row.regional}</td>
-      <td>${row.kota}</td>
-      <td>${row.segment}</td>
       <td>${row.pic}</td>
       <td>${row.tanggal}</td>
       <td>${row.waktu}</td>
-      <td>${row.durasi}</td>
-      <td>${row.tipe}</td>
-      <td>${row.pelaksana}</td>
-      <td>${row.metode}</td>
       <td>${row.crq}</td>
     `;
-    tbody.appendChild(trMain);
 
-    // baris lokasi tambahan (penanda)
-    const trLokasi = document.createElement('tr');
-    trLokasi.innerHTML = `
-      <td></td>
-      <td colspan="14" class="cra-lokasi">
-        Lokasi : ${row.lokasi.join(', ')}
-      </td>
-    `;
-    tbody.appendChild(trLokasi);
+    // simpan perubahan status
+    tr.querySelector('select').addEventListener('change', e => {
+      row.status = e.target.value;
+      e.target.className = `cra-status ${getStatusClass(row.status)}`;
+    });
+
+    tbody.appendChild(tr);
   });
 }
 
 // proses data CRA
+
+function formatExcelDate(v){
+  if (!v) return '';
+
+  // jika sudah Date object
+  if (v instanceof Date) {
+    return v.toISOString().split('T')[0];
+  }
+
+  // jika NUMBER (serial Excel)
+  if (typeof v === 'number') {
+    const date = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return date.toISOString().split('T')[0];
+  }
+
+  return v;
+}
+
+function pickField(row, names = []) {
+  for (const key of Object.keys(row)) {
+    const clean = key.toUpperCase().replace(/\s+/g,' ').trim();
+    for (const n of names) {
+      if (clean === n.toUpperCase()) {
+        return row[key];
+      }
+    }
+  }
+  return '';
+}
+
 function processCRA(rawData) {
   const map = new Map();
 
@@ -400,15 +441,31 @@ function processCRA(rawData) {
     if (!map.has(key)) {
       map.set(key, {
         noCRA,
-        deskripsi: row['DESKRIPSI'] || row['DESCRIPTION'] || '',
+        deskripsi: row['JUDUL'] || row['DESKRIPSI'] || row['DESCRIPTION'] || '',
         lokasi: [...lokasiArr],
         regional: row['REGIONAL'] || '',
         kota: row['KOTA'] || row['CITY'] || '',
         segment: row['SEGMENT'] || '',
         pic: row['PIC'] || '',
-        tanggal: row['TANGGAL'] || row['DATE'] || '',
-        waktu: row['WAKTU'] || row['JAM'] || '',
-        durasi: row['DURASI'] || '',
+        // tanggal: row['TANGGAL'] || row['DATE'] || '',
+        //waktu: row['WAKTU'] || row['JAM'] || '',
+        tanggal: formatExcelDate(
+		  pickField(row, [
+			'TGL_MULAI',
+			'TGL MULAI',
+			'TANGGAL',
+			'DATE'
+		  ])
+		),
+
+		waktu: pickField(row, [
+		  'WAKTU SETEMPAT',
+		  'WAKTU',
+		  'JAM',
+		  'START-END',
+		  'START - END'
+		]),
+		durasi: row['DURASI'] || '',
         tipe: row['TIPE'] || '',
         pelaksana: row['PELAKSANA'] || '',
         metode: row['METODE'] || '',
@@ -428,22 +485,7 @@ function processCRA(rawData) {
   CRA_DATA = Array.from(map.values());
   renderCRA(CRA_DATA);
 }
-
-// event upload file CRA
-document.getElementById('craFile')?.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = () => {
-    const text = reader.result;
-    const data = parseCRACSV(text);
-    processCRA(data);
-  };
-
-  reader.readAsText(file);
-});
+ 
 
 // ================= CRA EXCEL SUPPORT =================
 
@@ -455,10 +497,13 @@ function parseCRAExcel(arrayBuffer) {
   // convert sheet to JSON
   return XLSX.utils.sheet_to_json(sheet, {
     defval: '',
-    raw: false
+    //raw: false
+	raw: true,        // 🔥 INI KUNCI UTAMA
+    cellDates: true  // 🔥 PENTING UNTUK TANGGAL
   });
 }
 
+ 
 // override event upload CRA (CSV + XLS)
 document.getElementById('craFile')?.addEventListener('change', e => {
   const file = e.target.files[0];
@@ -467,28 +512,67 @@ document.getElementById('craFile')?.addEventListener('change', e => {
   const ext = file.name.split('.').pop().toLowerCase();
   const reader = new FileReader();
 
-  // === EXCEL ===
   if (ext === 'xls' || ext === 'xlsx') {
     reader.onload = evt => {
       const data = parseCRAExcel(evt.target.result);
       processCRA(data);
+      CRA_RESULT = CRA_DATA;
     };
     reader.readAsArrayBuffer(file);
     return;
   }
 
-  // === CSV (fallback) ===
   reader.onload = () => {
     const text = reader.result;
     const data = parseCRACSV(text);
     processCRA(data);
+    CRA_RESULT = CRA_DATA;
   };
   reader.readAsText(file);
 });
+
+// ================= EXPORT CRA TO EXCEL =================
+
+function statusWithIcon(status){
+  if (status === 'ON SCHEDULE') return 'ON SCHEDULE ✅';
+  if (status === 'CANCEL') return 'CANCEL ❌';
+  return 'BELUM DIISI ⌛️';
+}
+
+function exportCRAtoExcel() {
+  if (!CRA_DATA.length) {
+    alert('Data CRA kosong');
+    return;
+  }
+  
+const rows = CRA_DATA.map((row, i) => ({
+  No: i + 1,
+  Status: row.status || 'BELUM DIISI',
+  Status: statusWithIcon(row.status),
+  No_CRA: row.noCRA,
+  Judul: row.deskripsi,
+  Lokasi: row.lokasi.join(', '),
+  Regional: row.regional,
+  PIC: row.pic,
+  Tanggal: row.tanggal,
+  Waktu: row.waktu,
+  CRQ: row.crq
+}));
+
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CRA Reg 5');
+
+  XLSX.writeFile(wb, 'CRA_REG5.xlsx');
+}
+
+
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
   loadWorkzones();
   document.getElementById('btnConvert')?.addEventListener('click', convertEskalasi);
   document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
+  document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
 });
