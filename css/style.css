@@ -608,3 +608,33 @@ h1{
   text-align: left;
   letter-spacing: .2px;
 }
+
+.esk-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.esk-box{
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.esk-box h3{
+  text-align: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.esk-box textarea{
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+}
+
+.esk-box button{
+  margin-top: 8px;
+  width: 100%;
+}
