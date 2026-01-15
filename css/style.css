@@ -363,3 +363,94 @@ h1{
   font-style: italic;
   opacity: .85;
 }
+
+/* ===== CRA ===== */
+.cra-section {
+  margin-top: 40px;
+}
+
+.cra-section h2 {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.cra-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.upload-btn,
+.export-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg,#2563eb,#3b82f6);
+  color: white;
+}
+
+.upload-btn:hover,
+.export-btn:hover {
+  opacity: .9;
+}
+
+.cra-table-wrap {
+  overflow-x: auto;
+}
+
+#craTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#craTable th {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#craTable td {
+  padding: 8px;
+  border-bottom: 1px solid #334155;
+  vertical-align: top;
+}
+
+#craTable tr:hover {
+  background: rgba(59,130,246,.08);
+}
+
+.cra-lokasi {
+  font-style: italic;
+  color: #94a3b8;
+  background: #020617;
+}  
+
+.cra-status {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+}
+
+.cra-status.on {
+  background: #16a34a;
+  color: #fff;
+}
+
+.cra-status.wait {
+  background: #facc15;
+  color: #000;
+}
+
+.cra-status.cancel {
+  background: #dc2626;
+  color: #fff;
+}
