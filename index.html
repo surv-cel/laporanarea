@@ -87,33 +87,33 @@
 </section>
 
 <!-- ================= CRA ================= -->
-<section class="section" id="cra">
-  <div class="page-title">
-    <h2>📑 CRA</h2>
+<section class="cra-section">
+  <h2>📋 CRA (Reg 5)</h2>
+
+  <div class="cra-actions">
+    <label class="upload-btn">
+      📂 Upload CRA
+      <input type="file" id="craFile" hidden />
+    </label>
+
+    <button id="btnExportCRA" class="export-btn">
+      ⬇ Export Excel
+    </button>
   </div>
 
-  <div class="upload">
-    <input type="file" id="craFile" accept=".csv,.xls,.xlsx">
-  </div>
-
-  <div class="cra-result">
+  <div class="cra-table-wrap">
     <table id="craTable">
       <thead>
         <tr>
           <th>No</th>
+          <th>Status</th>
           <th>No CRA</th>
-          <th>Deskripsi</th>
+          <th>Judul</th>
           <th>Lokasi</th>
           <th>Regional</th>
-          <th>Kota</th>
-          <th>Segment</th>
           <th>PIC</th>
           <th>Tanggal</th>
           <th>Waktu</th>
-          <th>Durasi</th>
-          <th>Tipe</th>
-          <th>Pelaksana</th>
-          <th>Metode</th>
           <th>CRQ</th>
         </tr>
       </thead>
@@ -121,6 +121,7 @@
     </table>
   </div>
 </section>
+
    
 <div class="watermark">SOEKMA PROPERTI</div>
 <!-- SheetJS for Excel -->
