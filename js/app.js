@@ -194,7 +194,11 @@ function copyColumn(type){
 
 // ================= ESKALASI =================
 function cleanText(t) {
-  return t.replace(/\*/g, ' ').replace(/\s+/g, ' ').trim();
+  return t
+    .replace(/\r/g, '')
+    .replace(/\t/g, ' ')
+    .replace(/[ ]{2,}/g, ' ')
+    .trim();
 }
 
 function pickBetween(text, start, end) {
@@ -210,10 +214,10 @@ function formatMultiLineBlock(text) {
   if (!text || text === '-') return '-';
 
   return text
-    .replace(/NODEB\s*:\s*(\d+)/i, 'NODEB : $1')
-    .replace(/BROADBAND\s*:\s*(\d+)/i, '\nBROADBAND : $1')
-    .replace(/EBIS\s*:\s*(\d+)/i, '\nEBIS : $1')
-    .replace(/WIFI\s*:\s*(\d+)/i, '\nWIFI : $1')
+    .replace(/NODEB\s*:?\s*(\d+)/i, 'NODEB $1')
+    .replace(/BROADBAND\s*:?\s*(\d+)/i, '\nBROADBAND $1')
+    .replace(/EBIS\s*:?\s*(\d+)/i, '\nEBIS $1')
+    .replace(/WIFI\s*:?\s*(\d+)/i, '\nWIFI $1')
     .trim();
 }
 
@@ -229,7 +233,18 @@ function formatAction(text) {
   return text.replace(/(\d{2}:\d{2}\sWIB\s:)/g, '\n$1').trim();
 }
 
-function convertEskalasi() {
+
+function convertEskalasi(){
+  convertTelegram();   // DATA B (ASLI)
+  convertWhatsApp();   // WHATSAPP (BARU)
+}
+
+function extractROCName(raw){
+  const m = raw.match(/Surveillance\s+ROC5\s*-\s*([A-Za-z\s]+)/i);
+  return m ? m[1].trim() : '-';
+}
+
+function convertTelegram() {
   const raw = cleanText(document.getElementById('eskInput').value);
 
   const result = `
@@ -275,7 +290,7 @@ ${cleanCC(pickBetween(raw,'CC :','Surveillance'))}
 Eskalasi :
 ${pickBetween(raw,'Eskalasi :','Surveillance')}
 
-Surveillance ROC5 - ${pickBetween(raw,'Surveillance','REPORT INTERNAL TELKOM')}
+Surveillance ROC5 - ${pickBetween(raw,' ROC5 -','REPORT INTERNAL TELKOM')}
 
 REPORT INTERNAL TELKOM
 DILARANG DISEBARLUASKAN KE LUAR TELKOM
@@ -288,6 +303,202 @@ TSEL : 0811-3081-500
   document.getElementById('eskOutput').value = result;
 }
 
+function extractCC(raw){
+  const idx = raw.indexOf('CC :');
+  if (idx === -1) return '-';
+
+  let cc = raw.substring(idx + 4);
+
+  // potong kalau ketemu pemutus
+  cc = cc.split(/REPORT INTERNAL|Contact Center|Last update|Surveillance/i)[0];
+
+  // bersihkan simbol & spasi
+  cc = cc
+    .replace(/\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cc || '-';
+}
+
+function getLastUpdate(raw){
+  const m = raw.match(/Last update\s*:\s*(.+)/i);
+  return m ? `Last update : ${m[1].trim()}` : '';
+}
+
+
+// ======================= FUNGSI WHATSAAPP===============
+function convertWhatsApp(){
+  const rawFull = document.getElementById('eskInput').value;
+  const raw = stripOldFooter(rawFull);
+  const lokasi   = pickBetween(raw,'LOKASI :','Urgency');
+  const start    = pickBetween(raw,'Start Time :','End Time');
+  const durasi   = pickBetween(raw,'Duration Time :','Headline');
+  const tiket    = pickBetween(raw,'Nomor Tiket :','NE');
+  const pic      = pickBetween(raw,'PIC :','CC');
+
+  const headline = pickBetween(raw,'Headline :','Impacted Service');
+
+  const impactedService = formatMultiLineBlock(
+    pickBetween(raw,'Impacted Service :','Pelanggan Terganggu')
+  );
+
+  const pelanggan = formatMultiLineBlock(
+    pickBetween(raw,'Pelanggan Terganggu :','Perangkat Terganggu')
+  );
+
+  const perangkat = pickBetween(raw,'Perangkat Terganggu :','Penyebab gangguan');
+  const penyebab  = pickBetween(raw,'Penyebab gangguan:','Action');
+
+  const ticketState = detectTicketState(raw);
+  const lastAction  = getLastAction(raw);
+
+  let progressLine = '';
+  let closingLine  = '';
+
+  if (ticketState === 'CLOSED') {
+    progressLine = `sudah CLOSED setelah ${lastAction}`;
+    closingLine  = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} sudah CLOSED.`;
+  } else {
+    progressLine = `Progres sampai saat ini : ${lastAction}`;
+    closingLine  = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} masih dalam pengecekan.`;
+  }
+
+  const wa = `
+Kepada : GM TA Bpk @,
+Head Of Regional Jatim Balnus Bpk @
+
+${buildWACriticalLine(raw)}
+sejak ${start}
+${progressLine}
+
+DOWNTIME : ${durasi}
+
+Headline :
+${headline}
+
+Impacted Service :
+${impactedService}
+
+Pelanggan Terganggu :
+${pelanggan}
+
+Perangkat Terganggu :
+${perangkat}
+
+Penyebab gangguan :
+${penyebab}
+
+PIC :
+${pic}
+
+${closingLine}
+
+Terima kasih atas perhatiannya.
+
+${formatWAFooter(raw)}
+`.trim();
+
+  document.getElementById('eskOutputWA').value = wa;
+}
+
+
+
+// esklasi wa pembaruan 
+function buildWACriticalLine(raw){
+  let cause = detectCauseFromHeadline(raw);
+
+  // fallback ke isi teks
+  if (!cause) {
+    const upper = raw.toUpperCase();
+    if (upper.includes('GPON')) cause = 'GPON DOWN';
+    else if (upper.includes('FEEDER')) cause = 'FEEDER PUTUS';
+    else cause = 'AKSES DOWN';
+  }
+
+  let lokasi = pickBetween(raw, 'LOKASI :', 'Urgency');
+  if (!lokasi || lokasi === '-') {
+    lokasi = pickBetween(raw, 'LOKASI :', 'Start Time');
+  }
+  if (!lokasi || lokasi === '-') lokasi = 'STO';
+
+  return `Kami laporkan gangguan CRITICAL akibat ${cause} di STO ${lokasi}`;
+}
+
+
+// baru lagi 
+function detectCauseFromHeadline(raw){
+  const headline = pickBetween(raw, 'Headline :', 'Impacted Service').toUpperCase();
+
+  if (!headline || headline === '-') return null;
+
+  // deteksi sebelum TIF
+  if (/FEEDER\s*\|?\s*TIF/i.test(headline)) return 'FEEDER PUTUS';
+  if (/GPON\s*\|?\s*TIF/i.test(headline)) return 'GPON DOWN';
+
+  // fallback simple
+  if (headline.includes('FEEDER')) return 'FEEDER PUTUS';
+  if (headline.includes('GPON')) return 'GPON DOWN';
+
+  return null;
+}
+
+function detectTicketState(raw){
+  const status = pickBetween(raw,'Current status :','Nomor Tiket').toUpperCase();
+
+  if (status.includes('CLOSED')) return 'CLOSED';
+
+  if (raw.toUpperCase().includes(' CLOSED')) return 'CLOSED';
+
+  return 'UPDATE';
+}
+
+function getLastAction(raw){
+  const actionBlock = pickBetween(raw,'Action :','PIC');
+  if (!actionBlock || actionBlock === '-') return '-';
+
+  // pecah berdasarkan WIB
+  const parts = actionBlock.split(/\d{2}:\d{2}\sWIB\s*:/i)
+    .map(p => p.trim())
+    .filter(Boolean);
+
+  // ambil progres terakhir
+  let last = parts.length ? parts[parts.length - 1] : actionBlock;
+
+  // bersihkan sisa jam kalau masih ada
+  last = last.replace(/\d{2}:\d{2}\sWIB/gi, '').trim();
+
+  return last;
+}
+
+function stripOldFooter(raw){
+  const idx = raw.search(/Surveillance\s+ROC/i);
+  if (idx === -1) return raw;
+  return raw.substring(0, idx).trim();
+}
+
+
+function formatWAFooter(raw){
+  const rocName = extractROCName(raw) || 'ROC5';
+
+  return `
+Surveillance ROC5 - ${pickBetween(raw,' ROC5 -','REPORT INTERNAL TELKOM')}
+
+Eskalasi : HoD Bpk @
+
+CC : EVP Teritory III Bpk @ , SM ROC DAN SM RAM, GM TA, MGR TA, MGR FBB, MGR AODM, MGR OM RAM
+
+*REPORT INTERNAL TIDAK UNTUK DISEBARKAN KE PIHAK LUAR*
+
+Contact Center:
+Free Call : 0800-1-353000
+TSEL : 0811-3081-500
+
+${getLastUpdate(raw)}
+`.trim();
+}
+
+
 
 function copyEskalasi() {
   const o = document.getElementById('eskOutput');
@@ -295,6 +506,14 @@ function copyEskalasi() {
   document.execCommand('copy');
   alert('Data eskalasi berhasil di-copy');
 }
+
+function copyWA(){
+  const o = document.getElementById('eskOutputWA');
+  o.select();
+  document.execCommand('copy');
+  alert('Format WhatsApp berhasil di-copy');
+}
+
 
 
 // ================= CRA MODULE =================
@@ -337,7 +556,7 @@ function getCRANumber(noCRA = '') {
   return m ? m[1] : null;
 }
 
-// render tabel CRA
+// ============= render tabel CRA =============
 function renderCRA(data) {
   const tbody = document.querySelector('#craTable tbody');
   if (!tbody) return;
@@ -625,9 +844,20 @@ function exportCRAtoTXT() {
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
   loadWorkzones();
-  document.getElementById('btnConvert')?.addEventListener('click', convertEskalasi);
+
+  // AUTO CONVERT SAAT PASTE / INPUT
+  const eskInput = document.getElementById('eskInput');
+  if (eskInput) {
+    eskInput.addEventListener('input', () => {
+      if (eskInput.value.trim().length > 10) {
+        convertEskalasi();
+      }
+    });
+  }
+
+  // tombol lain tetap
   document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
   document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
-document.getElementById('btnExportTXT')
-  ?.addEventListener('click', exportCRAtoTXT);
+  document.getElementById('btnExportTXT')
+    ?.addEventListener('click', exportCRAtoTXT);
 });
