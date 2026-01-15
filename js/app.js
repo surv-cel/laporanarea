@@ -426,8 +426,8 @@ function processCRA(rawData) {
 
   rawData.forEach(row => {
     const regional = (row['REGIONAL'] || '').toUpperCase();
-    //if (!regional.includes('REG 5')) return;
-	// hanya ambil Reg 5 atau All Reg
+   // if (!regional.includes('REG 5')) return;
+   // hanya ambil Reg 5 atau All Reg
 	if (!regional.includes('REG 5') && !regional.includes('ALL REG')) return;
     
     const noCRA = row['No CRA'] || row['NO CRA'] || '';
@@ -569,6 +569,57 @@ const rows = CRA_DATA.map((row, i) => ({
   XLSX.writeFile(wb, 'CRA_REG5.xlsx');
 }
 
+// EXPORT TEXT NOTEPAD 
+function exportCRAtoTXT() {
+  if (!CRA_DATA.length) {
+    alert('Data CRA kosong');
+    return;
+  }
+
+  const total = CRA_DATA.length;
+
+  const count = {
+    'ON SCHEDULE': 0,
+    'CANCEL': 0,
+    'BELUM DIISI': 0
+  };
+
+  CRA_DATA.forEach(r => {
+    const s = r.status || 'BELUM DIISI';
+    count[s]++;
+  });
+
+  let txt = '';
+  txt += `KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\n\n`;
+  txt += `ON SCHEDULE : ${count['ON SCHEDULE']}\n`;
+  txt += `CANCEL : ${count['CANCEL']}\n`;
+  txt += `BELUM DIISI : ${count['BELUM DIISI']}\n`;
+  txt += `TOTAL : ${total}\n\n\n`;
+
+  CRA_DATA.forEach((row, i) => {
+    txt += `${i + 1}. ${statusWithIcon(row.status || 'BELUM DIISI')}\n`;
+    txt += `${row.noCRA}\n`;
+    txt += `${row.deskripsi}\n`;
+    txt += `Regional : ${row.regional}\n`;
+    txt += `Tgl : ${row.tanggal} ${row.waktu}\n`;
+    txt += `PIC : ${row.pic}\n`;
+    txt += `CRQ : ${row.crq}\n\n`;
+    txt += `Lokasi : ${row.lokasi.join(', ')}\n\n\n`;
+    txt += `--------------------------------------------------\n\n`;
+  });
+
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'CRA_MALAM_INI.txt';
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 
 // ================= INIT =================
@@ -577,4 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnConvert')?.addEventListener('click', convertEskalasi);
   document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
   document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
+document.getElementById('btnExportTXT')
+  ?.addEventListener('click', exportCRAtoTXT);
 });
