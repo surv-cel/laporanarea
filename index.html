@@ -69,22 +69,31 @@
     <h2>🔁 CONVERTER ESKALASI</h2>
   </div>
 
-  <div class="grid2">
-    <div class="card">
-      <h3>📥 Data A</h3>
-      <textarea id="eskInput" placeholder="Paste Data A di sini..."></textarea>
-      <button id="btnConvert">Convert</button>
-    </div>
+	  <div class="esk-grid">
 
-    <div class="card">
-      <h3>📤 Data B</h3>
-      <textarea id="eskOutput" readonly></textarea>
-      <button id="btnCopy">COPY</button>
-    </div>
-  </div>
-</section>
+	  <!-- DATA A (SUDAH ADA) -->
+	  <div class="esk-box">
+		<h3>DATA A</h3>
+		<textarea id="eskInput"></textarea>
+	  </div>
 
-</section>
+	  <!-- TELEGRAM (SEBELUMNYA DATA B) -->
+	  <div class="esk-box">
+		<h3>TELEGRAM</h3>
+		<textarea id="eskOutput"></textarea>
+		<button onclick="copyEskalasi()">Copy</button>
+	  </div>
+
+	  <!-- WHATSAPP (BARU) -->
+	  <div class="esk-box">
+		<h3>WHATSAPP</h3>
+		<textarea id="eskOutputWA"></textarea>
+		<button onclick="copyWA()">Copy</button>
+	  </div>
+		</div>
+   </section>
+
+   
 
 <!-- ================= CRA ================= -->
 <section class="cra-section">
