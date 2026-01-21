@@ -12,12 +12,18 @@
   <h1>📊 Laporan GAMAS (CSV)</h1>
 </div>
 
-<div class="header">
-  <div class="upload">
-    <input type="file" id="fileInput" accept=".csv" />
+<div class="top-bar">
+
+  <div class="header">
+    <div class="upload">
+      <label class="upload-btn">
+        Pilih File CSV
+        <input type="file" id="fileInput" accept=".csv" hidden />
+      </label>
+      <span class="upload-filename" id="fileName">Belum ada file</span>
+    </div>
   </div>
 
-  <!-- 🔍 SEARCH BAR (BARU) -->
   <div class="search-area">
     <input
       type="text"
@@ -27,24 +33,25 @@
     <button id="btnSearch">OK</button>
   </div>
 
-	<div class="stats">
-	  <div class="badge total" id="totalCount">TOTAL : 0</div>
-	  <div class="badge bb" id="bbCount">BB : 0</div>
-	  <div class="badge ip" id="ipCount">IP : 0</div>
-	  <div class="badge gpon" id="gponCount">GPON : 0</div>
-	  <div class="badge feeder" id="feederCount">FEEDER : 0</div>
-	  <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
-	</div>
-
+  <div class="stats">
+    <div class="badge total" id="totalCount">TOTAL : 0</div>
+    <div class="badge bb" id="bbCount">BB : 0</div>
+    <div class="badge ip" id="ipCount">IP : 0</div>
+    <div class="badge gpon" id="gponCount">GPON : 0</div>
+    <div class="badge feeder" id="feederCount">FEEDER : 0</div>
+    <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
+  </div>
 
   <div class="theme-area">
     <div class="toggle" id="themeToggle">🌙 Dark</div>
     <div class="trademark">
       <span>KERJO O REK</span>
-      <small>SING GENAH</small>
+      <span>SING GENAH</span>
     </div>
   </div>
+
 </div>
+
 
 <div id="jatim" class="section">
   <div class="section-header">
