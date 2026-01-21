@@ -6,6 +6,11 @@ let DB_BALNUS = new Set();
 let ALL_DATA = [];
 let CRA_RESULT = [];
 
+// FILTER STATUS AKTIF
+let ACTIVE_STATUSES = [];
+
+
+
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
   try {
@@ -78,9 +83,14 @@ document.getElementById("fileInput")?.addEventListener("change", e => {
 
   const reader = new FileReader();
   reader.onload = () => {
-    ALL_DATA = parseCSV(reader.result);
-    renderData(ALL_DATA);
-  };
+    //LAMA 
+	//ALL_DATA = parseCSV(reader.result);
+    //renderData(ALL_DATA);
+	
+	// BARU 
+	ALL_DATA = parseCSV(reader.result);
+	applyFilters();
+	};
   reader.readAsText(file);
 });
 
@@ -142,36 +152,141 @@ function renderData(data) {
 	// document.getElementById("odcCount").textContent = `ODC : ${odc}`;
 	// document.getElementById("odpCount").textContent = `ODP : ${odp}`;
 
-
+	// BADGE STATUS
+	renderStatusBadges(data);
+	
   if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
   if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
 }
 
+const STATUS_LIST = [
+  'New',
+  'Draft',
+  'Analysis',
+  'Pending',
+  'Backend',
+  'FinalCheck',
+  'Resolved',
+  'Mediacare',
+  'Salamsim',
+  'Closed'
+];
+// === fungsi baru multiselect 
+function renderStatusFilter() {
+  const box = document.getElementById('statusFilterBox');
+  if (!box) return;
+
+  box.innerHTML = '';
+
+  STATUS_LIST.forEach(status => {
+    const label = document.createElement('label');
+    label.style.marginRight = '10px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = status;
+
+    checkbox.addEventListener('change', () => {
+      ACTIVE_STATUSES = Array.from(
+        box.querySelectorAll('input[type="checkbox"]:checked')
+      ).map(cb => cb.value);
+
+      applyFilters();
+    });
+
+    label.appendChild(checkbox);
+    label.append(` ${status}`);
+    box.appendChild(label);
+  });
+}
+
+
+
+//=== FUNGSI BARU FILTER BADGE COUNTER ===
+function renderStatusBadges(data) {
+  const box = document.getElementById('statusBadges');
+  if (!box) return;
+
+  box.innerHTML = '';
+
+  STATUS_LIST.forEach(status => {
+    const count = data.filter(row =>
+      (row['STATUS'] || '').toUpperCase() === status.toUpperCase()
+    ).length;
+
+    const badge = document.createElement('div');
+    badge.className = 'badge';
+    badge.textContent = `${status} : ${count}`;
+
+    box.appendChild(badge);
+  });
+}
+
+
 // ================= SEARCH =================
+//document.getElementById("btnSearch")?.addEventListener("click", () => {
+//  const keyword = document.getElementById("searchInput").value.trim();
+//
+//  if (!keyword) {
+//    renderData(ALL_DATA);
+//    return;
+//  }
+//
+//  const incList = keyword
+//    .split(',')
+//    .map(i => i.trim().toUpperCase())
+//    .filter(Boolean);
+//
+//  const filtered = ALL_DATA.filter(row =>
+//    incList.includes((row["INCIDENT"] || "").toUpperCase())
+//  );
+//
+//  renderData(filtered);
+//});
+
+// ====== SEARCH BARU =========
 document.getElementById("btnSearch")?.addEventListener("click", () => {
-  const keyword = document.getElementById("searchInput").value.trim();
-
-  if (!keyword) {
-    renderData(ALL_DATA);
-    return;
-  }
-
-  const incList = keyword
-    .split(',')
-    .map(i => i.trim().toUpperCase())
-    .filter(Boolean);
-
-  const filtered = ALL_DATA.filter(row =>
-    incList.includes((row["INCIDENT"] || "").toUpperCase())
-  );
-
-  renderData(filtered);
+  applyFilters();
 });
+
+
+
 
 // ================= THEME =================
 document.getElementById("themeToggle")?.addEventListener("click", () => {
   document.body.classList.toggle("light");
 });
+
+
+//  ==========FUNGSI FILTER ===========
+function applyFilters() {
+  let data = [...ALL_DATA];
+
+  // FILTER STATUS (MULTI)
+  if (ACTIVE_STATUSES.length > 0) {
+    data = data.filter(row =>
+      ACTIVE_STATUSES
+        .map(s => s.toUpperCase())
+        .includes((row['STATUS'] || '').toUpperCase())
+    );
+  }
+
+  // FILTER SEARCH INCIDENT
+  const keyword = document.getElementById("searchInput")?.value.trim();
+  if (keyword) {
+    const incList = keyword
+      .split(',')
+      .map(i => i.trim().toUpperCase())
+      .filter(Boolean);
+
+    data = data.filter(row =>
+      incList.includes((row["INCIDENT"] || "").toUpperCase())
+    );
+  }
+
+  renderData(data);
+}
+
 
 
 // =============COPY JATIM BALNUS =============
@@ -845,6 +960,9 @@ function exportCRAtoTXT() {
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
   loadWorkzones();
+  
+  // panggil multi select 
+  renderStatusFilter();
 
   // AUTO CONVERT SAAT PASTE / INPUT
   const eskInput = document.getElementById('eskInput');
