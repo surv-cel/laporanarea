@@ -607,6 +607,7 @@ function formatGamasRow(row, index) {
 }
 
 // Fungsi untuk menampilkan modal GAMAS
+// Fungsi untuk menampilkan modal GAMAS
 function showGamasModal(text) {
   // Cek apakah modal sudah ada, jika belum buat baru
   let modal = document.getElementById("gamasModal");
@@ -615,28 +616,49 @@ function showGamasModal(text) {
     modal = document.createElement("div");
     modal.id = "gamasModal";
     modal.style.cssText = `
-      display:none; 
-      position:fixed; 
-      inset:0; 
-      background:rgba(0,0,0,0.5); 
-      z-index:9999; 
-      justify-content:center; 
-      align-items:center;
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      z-index: 9999;
     `;
     
     modal.innerHTML = `
-      <div style="background:#fff; width:800px; max-width:95%; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
-        <h3 style="margin-top:0; color:#333;">LAPORAN GAMAS DM</h3>
-        <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:10px; resize:none; font-family:monospace; font-size:12px; padding:8px; border:1px solid #ccc; border-radius:4px;"></textarea>
-        <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end;">
-          <button id="copyGamas" style="padding:8px 16px; background:#22c55e; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Copy</button>
-          <button id="downloadGamas" style="padding:8px 16px; background:#3b82f6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Download</button>
-          <button id="closeGamas" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Close</button>
+      <div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">LAPORAN GAMAS DM</h3>
+          <button id="closeGamasTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b; line-height:1; padding:0 8px;">&times;</button>
+        </div>
+        <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; box-sizing:border-box;"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button id="copyGamas" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">📋 Copy</button>
+          <button id="downloadGamas" style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">📥 Download</button>
+          <button id="closeGamas" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">✕ Close</button>
         </div>
       </div>
     `;
     
     document.body.appendChild(modal);
+    
+    // Buat overlay
+    const overlay = document.createElement("div");
+    overlay.id = "gamasOverlay";
+    overlay.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      z-index: 9998;
+    `;
+    document.body.appendChild(overlay);
     
     // Event listeners
     document.getElementById("copyGamas").addEventListener("click", () => {
@@ -658,14 +680,23 @@ function showGamasModal(text) {
       URL.revokeObjectURL(url);
     });
     
-    document.getElementById("closeGamas").addEventListener("click", () => {
+    const closeModal = () => {
       modal.style.display = "none";
-    });
+      overlay.style.display = "none";
+    };
+    
+    document.getElementById("closeGamas").addEventListener("click", closeModal);
+    document.getElementById("closeGamasTop").addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
   }
   
   // Isi text dan tampilkan modal
   document.getElementById("gamasText").value = text;
-  modal.style.display = "flex";
+  modal.style.display = "block";
+  document.getElementById("gamasOverlay").style.display = "block";
+  
+  // Scroll otomatis ke atas modal
+  modal.scrollTop = 0;
 }
 
 // Ganti event listener exportExcel dengan fungsi baru
