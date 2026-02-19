@@ -12,6 +12,16 @@ let ACTIVE_STATUSES = [];
 //ambil dari data google sheet
 let PIC_DB = {};
 
+//ambil untuk resume cra DM 
+let DISTRICT_DB = {};
+
+// DISTRICT_DB[witel] = district;
+
+window.DISTRICT_DB = {};
+window.CRA_RESULT = [];
+
+
+
 let currentData = []; // Data setelah filter + search
 
 
@@ -54,6 +64,170 @@ async function loadPICMapping() {
   } catch (err) {
     console.error("Gagal load PIC mapping:", err);
   }
+}
+
+// fungsion load untuk resume cra tabel 
+// ================= LOAD DISTRICT MAPPING DARI GOOGLE SHEETS =================
+// ================= LOAD DISTRICT MAPPING DARI GOOGLE SHEETS =================
+async function loadDistrictMapping() {
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT730gBi8fU16gEo6ZmE3d5MQw5Xh2isbMeoI4SM-BfyP2uK8sL85skV70jW83vdXJAuhPF0JxS3OS7/pub?output=csv";
+
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    
+    // Hapus BOM dan split per baris
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+    
+    // RESET database
+    window.DISTRICT_DB = {};
+    
+    // Untuk tracking district yang unik
+    const uniqueDistricts = new Set();
+    
+    lines.forEach((line, index) => {
+      // Format: DISTRICT,WITEL (2 kolom)
+      const [district, witel] = line.split(',').map(s => s.trim().toUpperCase());
+      
+      if (district && witel && district !== "DISTRICT" && witel !== "WITEL") {
+        // Simpan district unik
+        uniqueDistricts.add(district);
+        
+        // Simpan mapping: WITEL -> DISTRICT
+        window.DISTRICT_DB[witel] = district;
+        
+        // Simpan juga tanpa spasi
+        window.DISTRICT_DB[witel.replace(/\s+/g, '')] = district;
+        
+        // Untuk kode singkat (SBY, MLG, dll)
+        if (witel.length <= 5 && !witel.includes(' ')) {
+          window.DISTRICT_DB[witel] = district;
+        }
+        
+        // Mapping untuk kata-kata yang mirip
+        if (witel.includes(' ')) {
+          const parts = witel.split(' ');
+          parts.forEach(part => {
+            if (part.length >= 3) {
+              window.DISTRICT_DB[part] = district;
+            }
+          });
+        }
+      }
+    });
+    
+    // Simpan daftar district unik ke global variable
+    window.UNIQUE_DISTRICTS = Array.from(uniqueDistricts).sort();
+    
+    console.log("✅ DISTRICT_DB loaded:", Object.keys(window.DISTRICT_DB).length, "entries");
+    console.log("✅ Unique districts:", window.UNIQUE_DISTRICTS);
+    console.log("Sample mappings:", Object.entries(window.DISTRICT_DB).slice(0, 10));
+    
+  } catch (err) {
+    console.error("❌ Gagal load district:", err);
+    // Fallback dengan 10 district yang diinginkan
+    loadDistrictMappingFallback();
+  }
+}
+
+// Fallback mapping dengan 10 district utama
+function loadDistrictMappingFallback() {
+  console.log("📋 Using fallback district mapping with 10 districts");
+  
+  // 10 district utama
+  const districts = [
+    "DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER",
+    "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA"
+  ];
+  
+  window.UNIQUE_DISTRICTS = districts;
+  window.DISTRICT_DB = {};
+  
+  // Mapping manual untuk setiap district
+  const fallbackMapping = {
+    // SURABAYA
+    "SBY": "SURABAYA",
+    "SURABAYA": "SURABAYA",
+    "SURABAYA SELATAN": "SURABAYA",
+    "SURABAYA UTARA": "SURABAYA",
+    "SURABAYA TIMUR": "SURABAYA",
+    "SURABAYA BARAT": "SURABAYA",
+    "SURABAYA PUSAT": "SURABAYA",
+    "MADURA": "SURABAYA",
+    "BANGKALAN": "SURABAYA",
+    "SAMPANG": "SURABAYA",
+    "PAMEKASAN": "SURABAYA",
+    "SUMENEP": "SURABAYA",
+    
+    // MALANG
+    "MLG": "MALANG",
+    "MALANG": "MALANG",
+    "BATU": "MALANG",
+    "BLITAR": "MALANG",
+    "TULUNGAGUNG": "MALANG",
+    
+    // SIDOARJO
+    "SDA": "SIDOARJO",
+    "SIDOARJO": "SIDOARJO",
+    "MOJOKERTO": "SIDOARJO",
+    "PASURUAN": "SIDOARJO",
+    "JOMBANG": "SIDOARJO",
+    
+    // JEMBER
+    "JBR": "JEMBER",
+    "JEMBER": "JEMBER",
+    "BANYUWANGI": "JEMBER",
+    "BONDOWOSO": "JEMBER",
+    "SITUBONDO": "JEMBER",
+    "LUMAJANG": "JEMBER",
+    "PROBOLINGGO": "JEMBER",
+    
+    // MADIUN
+    "MDN": "MADIUN",
+    "MADIUN": "MADIUN",
+    "KEDIRI": "MADIUN",
+    "NGANJUK": "MADIUN",
+    "MAGETAN": "MADIUN",
+    "NGAWI": "MADIUN",
+    "PACITAN": "MADIUN",
+    "PONOROGO": "MADIUN",
+    "TRENGGALEK": "MADIUN",
+    
+    // LAMONGAN
+    "LMG": "LAMONGAN",
+    "LAMONGAN": "LAMONGAN",
+    "GRESIK": "LAMONGAN",
+    "BOJONEGORO": "LAMONGAN",
+    "TUBAN": "LAMONGAN",
+    
+    // DENPASAR
+    "DPS": "DENPASAR",
+    "DENPASAR": "DENPASAR",
+    "BADUNG": "DENPASAR",
+    "GIANYAR": "DENPASAR",
+    "TABANAN": "DENPASAR",
+    "BANGLI": "DENPASAR",
+    "KARANGASEM": "DENPASAR",
+    
+    // FLORES
+    "FLORES": "FLORES",
+    "ENDE": "FLORES",
+    "MAUMERE": "FLORES",
+    "LABUAN BAJO": "FLORES",
+    
+    // KUPANG
+    "KUPANG": "KUPANG",
+    "TIMOR": "KUPANG",
+    "SUMBA": "KUPANG",
+    
+    // MATARAM
+    "MATARAM": "MATARAM",
+    "LOMBOK": "MATARAM",
+    "SUMBAWA": "MATARAM",
+    "BIMA": "MATARAM"
+  };
+  
+  window.DISTRICT_DB = fallbackMapping;
 }
 
 
@@ -993,6 +1167,11 @@ document.getElementById('craFile')?.addEventListener('change', e => {
       const data = parseCRAExcel(evt.target.result);
       processCRA(data);
       CRA_RESULT = CRA_DATA;
+	  
+	   // 🔥 TAMBAH INI
+  window.CRA_RESULT = CRA_RESULT;
+  window.DISTRICT_DB = DISTRICT_DB;
+  
     };
     reader.readAsArrayBuffer(file);
     return;
@@ -1003,6 +1182,10 @@ document.getElementById('craFile')?.addEventListener('change', e => {
     const data = parseCRACSV(text);
     processCRA(data);
     CRA_RESULT = CRA_DATA;
+	 // 🔥 TAMBAH INI
+  window.CRA_RESULT = CRA_RESULT;
+  window.DISTRICT_DB = DISTRICT_DB;
+  
   };
   reader.readAsText(file);
 });
@@ -1163,18 +1346,273 @@ PIC : ${pic}
 });
 
 
+//button resume cra
+//button resume cra
+document.getElementById("btnResumeCRA").addEventListener("click", () => {
+  if (!CRA_RESULT.length) {
+    alert("Data CRA kosong.");
+    return;
+  }
 
+  console.log("CRA_RESULT sample:", CRA_RESULT[0]);
 
+  // ========== INISIALISASI 10 DISTRICT UTAMA ==========
+  const mainDistricts = [
+    "DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER",
+    "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA"
+  ];
+  
+  // Inisialisasi resume dengan nilai 0 untuk semua district
+  let resume = {};
+  mainDistricts.forEach(district => {
+    resume[district] = {
+      total: 0,
+      on: 0,
+      belum: 0,
+      cancel: 0
+    };
+  });
+  
+  // Tambahkan UNMAPPED
+  resume["UNMAPPED"] = {
+    total: 0,
+    on: 0,
+    belum: 0,
+    cancel: 0
+  };
+
+  // ========== MAPPING MANUAL LENGKAP ==========
+  const manualMapping = {
+    // SURABAYA (termasuk Madura)
+    "SBY": "SURABAYA",
+    "SURABAYA": "SURABAYA",
+    "SURABAYA SELATAN": "SURABAYA",
+    "SURABAYA UTARA": "SURABAYA",
+    "SURABAYA TIMUR": "SURABAYA",
+    "SURABAYA BARAT": "SURABAYA",
+    "SURABAYA PUSAT": "SURABAYA",
+    "MADURA": "SURABAYA",
+    "BANGKALAN": "SURABAYA",
+    "SAMPANG": "SURABAYA",
+    "PAMEKASAN": "SURABAYA",
+    "SUMENEP": "SURABAYA",
+    
+    // MALANG
+    "MLG": "MALANG",
+    "MALANG": "MALANG",
+    "BATU": "MALANG",
+    "BLITAR": "MALANG",
+    "TULUNGAGUNG": "MALANG",
+    
+    // SIDOARJO
+    "SDA": "SIDOARJO",
+    "SIDOARJO": "SIDOARJO",
+    "MOJOKERTO": "SIDOARJO",
+    "PASURUAN": "SIDOARJO",
+    "JOMBANG": "SIDOARJO",
+    
+    // JEMBER
+    "JBR": "JEMBER",
+    "JEMBER": "JEMBER",
+    "BANYUWANGI": "JEMBER",
+    "BONDOWOSO": "JEMBER",
+    "SITUBONDO": "JEMBER",
+    "LUMAJANG": "JEMBER",
+    "PROBOLINGGO": "JEMBER",
+    
+    // MADIUN
+    "MDN": "MADIUN",
+    "MADIUN": "MADIUN",
+    "KEDIRI": "MADIUN",
+    "NGANJUK": "MADIUN",
+    "MAGETAN": "MADIUN",
+    "NGAWI": "MADIUN",
+    "PACITAN": "MADIUN",
+    "PONOROGO": "MADIUN",
+    "TRENGGALEK": "MADIUN",
+    
+    // LAMONGAN
+    "LMG": "LAMONGAN",
+    "LAMONGAN": "LAMONGAN",
+    "GRESIK": "LAMONGAN",
+    "BOJONEGORO": "LAMONGAN",
+    "TUBAN": "LAMONGAN",
+    
+    // DENPASAR (BALI)
+    "DPS": "DENPASAR",
+    "DENPASAR": "DENPASAR",
+    "BADUNG": "DENPASAR",
+    "GIANYAR": "DENPASAR",
+    "TABANAN": "DENPASAR",
+    "BANGLI": "DENPASAR",
+    "KARANGASEM": "DENPASAR",
+    "KLUNGKUNG": "DENPASAR",
+    "UBUD": "DENPASAR",
+    "KUTA": "DENPASAR",
+    "NUSA DUA": "DENPASAR",
+    "SANUR": "DENPASAR",
+    "SEMINYAK": "DENPASAR",
+    "BALI": "DENPASAR",
+    
+    // FLORES
+    "FLORES": "FLORES",
+    "ENDE": "FLORES",
+    "MAUMERE": "FLORES",
+    "LARANTUKA": "FLORES",
+    "LABUAN BAJO": "FLORES",
+    "RUTENG": "FLORES",
+    "BAJAWA": "FLORES",
+    
+    // KUPANG (TIMOR)
+    "KUPANG": "KUPANG",
+    "TIMOR": "KUPANG",
+    "SUMBA": "KUPANG",
+    "ROTE": "KUPANG",
+    "ATAMBUA": "KUPANG",
+    "KEFAMENANU": "KUPANG",
+    "SOE": "KUPANG",
+    "WAIKABUBAK": "KUPANG",
+    "WAINGAPU": "KUPANG",
+    "NTT": "KUPANG",
+    
+    // MATARAM (LOMBOK)
+    "MATARAM": "MATARAM",
+    "LOMBOK": "MATARAM",
+    "SUMBAWA": "MATARAM",
+    "BIMA": "MATARAM",
+    "PRAYA": "MATARAM",
+    "SELONG": "MATARAM",
+    "NTB": "MATARAM",
+  };
+
+  let totalAll = 0;
+  let totalOn = 0;
+  let totalBelum = 0;
+  let totalCancel = 0;
+
+  // Proses setiap baris CRA
+  CRA_RESULT.forEach((row, index) => {
+    // Ambil witel/kota dari berbagai field
+    let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
+    
+    // Bersihkan
+    let witel = witelRaw
+      .toUpperCase()
+      .replace(/[^\w\s\/-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // ========== CARI DISTRICT ==========
+    let district = "UNMAPPED";
+    
+    // 1. Cek manual mapping
+    if (manualMapping[witel]) {
+      district = manualMapping[witel];
+    }
+    // 2. Cek per kata
+    else {
+      const words = witel.split(/[\s\/,-]+/);
+      for (let word of words) {
+        if (word.length >= 2 && manualMapping[word]) {
+          district = manualMapping[word];
+          break;
+        }
+      }
+    }
+    
+    // 3. Deteksi khusus
+    if (district === "UNMAPPED") {
+      if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR")) {
+        district = "DENPASAR";
+      }
+      else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) {
+        district = "FLORES";
+      }
+      else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) {
+        district = "KUPANG";
+      }
+      else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) {
+        district = "MATARAM";
+      }
+      else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) {
+        district = "LAMONGAN";
+      }
+      else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) {
+        district = "MADIUN";
+      }
+    }
+
+    // Pastikan district ada di resume
+    if (!resume[district]) {
+      resume[district] = {
+        total: 0,
+        on: 0,
+        belum: 0,
+        cancel: 0
+      };
+    }
+
+    // Update statistik
+    resume[district].total++;
+    totalAll++;
+
+    if (row.status === "ON SCHEDULE") {
+      resume[district].on++;
+      totalOn++;
+    } else if (row.status === "BELUM DIISI" || !row.status || row.status === "") {
+      resume[district].belum++;
+      totalBelum++;
+    } else {
+      resume[district].cancel++;
+      totalCancel++;
+    }
+  });
+
+// ========== BUAT TEKS RESUME ==========
+// ========== BUAT TEKS RESUME ==========
+let text = "Resume CRA\n";
+text += "[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
+
+let index = 1;
+
+// PAKAI mainDistricts YANG SUDAH ADA (dari inisialisasi)
+// Urutan tampilan sesuai keinginan
+const displayOrder = [
+  "SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN",
+  "LAMONGAN", "DENPASAR", "FLORES", "KUPANG", "MATARAM"
+];
+
+// Tampilkan 10 district sesuai urutan, meskipun totalnya 0
+displayOrder.forEach(district => {
+  if (resume[district]) {
+    let d = resume[district];
+    text += `${index}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
+    index++;
+  }
+});
+
+// UNMAPPED TIDAK DITAMPILKAN
+text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
+
+// Tampilkan di modal
+const textarea = document.getElementById("resumeText");
+const modal = document.getElementById("resumeModal");
+
+if (textarea && modal) {
+  textarea.value = text;
+  modal.style.display = "flex";
+}
+
+});
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
+
   loadWorkzones();
   loadPICMapping();
-  
-  // panggil multi select 
+  loadDistrictMapping();
   renderStatusFilter();
 
-  // AUTO CONVERT SAAT PASTE / INPUT
   const eskInput = document.getElementById('eskInput');
   if (eskInput) {
     eskInput.addEventListener('input', () => {
@@ -1184,9 +1622,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // tombol lain tetap
+  // Resume Modal
+  document.getElementById("copyResume")?.addEventListener("click", () => {
+    const textarea = document.getElementById("resumeText");
+    if (!textarea) return;
+    navigator.clipboard.writeText(textarea.value);
+    alert("Resume berhasil di-copy!");
+  });
+
+  document.getElementById("closeResume")?.addEventListener("click", () => {
+    document.getElementById("resumeModal").style.display = "none";
+  });
+
   document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
   document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
-  document.getElementById('btnExportTXT')
-    ?.addEventListener('click', exportCRAtoTXT);
-});
+  document.getElementById('btnExportTXT')?.addEventListener('click', exportCRAtoTXT);
+
+});   
