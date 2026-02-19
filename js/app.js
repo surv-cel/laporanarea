@@ -20,12 +20,7 @@ let DISTRICT_DB = {};
 window.DISTRICT_DB = {};
 window.CRA_RESULT = [];
 
-
-
 let currentData = []; // Data setelah filter + search
-
-
-
 
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
@@ -66,8 +61,6 @@ async function loadPICMapping() {
   }
 }
 
-// fungsion load untuk resume cra tabel 
-// ================= LOAD DISTRICT MAPPING DARI GOOGLE SHEETS =================
 // ================= LOAD DISTRICT MAPPING DARI GOOGLE SHEETS =================
 async function loadDistrictMapping() {
   const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT730gBi8fU16gEo6ZmE3d5MQw5Xh2isbMeoI4SM-BfyP2uK8sL85skV70jW83vdXJAuhPF0JxS3OS7/pub?output=csv";
@@ -121,7 +114,6 @@ async function loadDistrictMapping() {
     
     console.log("✅ DISTRICT_DB loaded:", Object.keys(window.DISTRICT_DB).length, "entries");
     console.log("✅ Unique districts:", window.UNIQUE_DISTRICTS);
-    console.log("Sample mappings:", Object.entries(window.DISTRICT_DB).slice(0, 10));
     
   } catch (err) {
     console.error("❌ Gagal load district:", err);
@@ -230,7 +222,6 @@ function loadDistrictMappingFallback() {
   window.DISTRICT_DB = fallbackMapping;
 }
 
-
 // ================= CSV PARSER =================
 function parseCSV(text) {
   // hapus BOM UTF-8 jika ada
@@ -287,14 +278,9 @@ document.getElementById("fileInput")?.addEventListener("change", e => {
 
   const reader = new FileReader();
   reader.onload = () => {
-    //LAMA 
-	//ALL_DATA = parseCSV(reader.result);
-    //renderData(ALL_DATA);
-	
-	// BARU 
-	ALL_DATA = parseCSV(reader.result);
-	applyFilters();
-	};
+    ALL_DATA = parseCSV(reader.result);
+    applyFilters();
+  };
   reader.readAsText(file);
 });
 
@@ -311,70 +297,56 @@ function renderData(data) {
   let odc = 0, odp = 0;
   let noJ = 1, noB = 1;
 
-   data.forEach(row => {
-	   const summary = row["SUMMARY"] || "";
-	   	const update  = row["WORKLOG SUMMARY"] || "-";
-	   const zone    = (row["WORKZONE"] || "").toUpperCase();
-      total++; 
+  data.forEach(row => {
+    const summary = row["SUMMARY"] || "";
+    const update = row["WORKLOG SUMMARY"] || "-";
+    const zone = (row["WORKZONE"] || "").toUpperCase();
+    total++; 
 
-	  if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) {
-		bb++;
-	  }
+    if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) {
+      bb++;
+    }
 
-	  if (summary.includes("(REPAIR) IP T3") || summary.includes("(RECOVERY) IP T3")) {
-		ip++;
-	  }
+    if (summary.includes("(REPAIR) IP T3") || summary.includes("(RECOVERY) IP T3")) {
+      ip++;
+    }
 
-	  if (summary.includes("DISTRIBUSI")) d++;
-	  if (summary.includes("FEEDER")) f++;
-	  if (summary.includes("GPON")) g++;
-	  if (summary.includes("ODC")) odc++;
-	  if (summary.includes("ODP")) odp++;
+    if (summary.includes("DISTRIBUSI")) d++;
+    if (summary.includes("FEEDER")) f++;
+    if (summary.includes("GPON")) g++;
+    if (summary.includes("ODC")) odc++;
+    if (summary.includes("ODP")) odp++;
 
-    // const zone = (row["WORKZONE"] || row["WORK ZONE"] || "").toUpperCase();
-		// const update = row["UPDATE"] || row["ACTION"] || "-";
+    const card = document.createElement("div");
+    card.className = "card";
 
-		const card = document.createElement("div");
-		card.className = "card";
+    if (DB_JATIM.has(zone)) {
+      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
+      jatimBox.appendChild(card);
+    } else if (DB_BALNUS.has(zone)) {
+      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
+      balnusBox.appendChild(card);
+    }
+  });
 
-		if (DB_JATIM.has(zone)) {
-		  card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
-		  jatimBox.appendChild(card);
-		} 
-		else if (DB_BALNUS.has(zone)) {
-		  card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
-		  balnusBox.appendChild(card);
-	}
-});
+  document.getElementById("totalCount").textContent = `TOTAL : ${total}`;
+  document.getElementById("bbCount").textContent = `BB : ${bb}`;
+  document.getElementById("ipCount").textContent = `IP : ${ip}`;
+  document.getElementById("gponCount").textContent = `GPON : ${g}`;
+  document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
+  document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
 
-	document.getElementById("totalCount").textContent = `TOTAL : ${total}`;
-	document.getElementById("bbCount").textContent = `BB : ${bb}`;
-	document.getElementById("ipCount").textContent = `IP : ${ip}`;
-	document.getElementById("gponCount").textContent = `GPON : ${g}`;
-	document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
-	document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
-	// document.getElementById("odcCount").textContent = `ODC : ${odc}`;
-	// document.getElementById("odpCount").textContent = `ODP : ${odp}`;
-
-	// BADGE STATUS
-	renderStatusBadges(data);
-	
+  renderStatusBadges(data);
+  
   if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
   if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
 }
 
 const STATUS_LIST = [
-  'New',
-  'Draft',
-  'Analysis',
-  'Pending',
-  'Backend',
-  'FinalCheck',
-  'Resolved',
-  'Mediacare',
-  'Salamsim',
-  'Closed'
+  'New', 'Draft', 'Analysis', 'Pending', 'Backend', 
+  'FinalCheck', 'Resolved', 'Mediacare', 'Salamsim', 'Closed'
 ];
+
 // === fungsi baru multiselect 
 function renderStatusFilter() {
   const box = document.getElementById('statusFilterBox');
@@ -404,20 +376,6 @@ function renderStatusFilter() {
   });
 }
 
-//function handleCSVUpload(parsed) {
-//  allData = parsed;
-//  filteredData = parsed;
-//  renderTable(filteredData);
-//}
-
-function handleCSVUpload(rows) {
-  allData = rows;
-  currentData = rows;
-
-  renderTable(currentData);
-}
-
-
 function applyFilters() {
   let data = [...ALL_DATA];
 
@@ -443,19 +401,13 @@ function applyFilters() {
     );
   }
 
-  // 🔥🔥🔥 INI KUNCI UTAMA
   currentData = data;
-
   renderData(currentData);
 }
 
-
-
-
 // ================= EXPORT LAPORAN GAMAS DM =================
-// Fungsi baru untuk export LAPORAN GAMAS DM (menggantikan exportExcel)
 function exportLaporanGamasDM(data) {
-  console.log("Data received:", data.length); // Debug
+  console.log("Data received:", data.length);
   
   // Filter data yang relevan (FEEDER, DISTRIBUSI, ODP)
   const filteredData = data.filter(row => {
@@ -463,7 +415,7 @@ function exportLaporanGamasDM(data) {
     return summary.includes("FEEDER") || summary.includes("DISTRIBUSI") || summary.includes("ODP");
   });
 
-  console.log("Filtered data:", filteredData.length); // Debug
+  console.log("Filtered data:", filteredData.length);
 
   if (filteredData.length === 0) {
     alert("Tidak ada data FEEDER, DISTRIBUSI, atau ODP dalam file ini.");
@@ -527,7 +479,6 @@ function exportLaporanGamasDM(data) {
 }
 
 // Fungsi untuk memformat satu baris GAMAS
-// Fungsi untuk memformat satu baris GAMAS
 function formatGamasRow(row, index) {
   const incident = row["INCIDENT"] || "-";
   const summary = row["SUMMARY"] || "";
@@ -537,7 +488,6 @@ function formatGamasRow(row, index) {
   const ttrEndToEnd = row["TTR END TO END"] || "00:00:00";
   
   // Parse summary untuk mendapatkan komponen
-  // Format: [SQM GAMAS] | AKSES | FEEDER | TIF-3 | REG-5 | PENYEBAB | PERBAIKAN | ...
   const parts = summary.split('|').map(p => p.trim());
   
   // Ekstrak komponen dengan aman
@@ -552,15 +502,15 @@ function formatGamasRow(row, index) {
   const lokasi = parts[8] || "";
   const estimasi = parts[9] || "";
   
-  // Ambil ODC dari summary (format: [ODC-JBR-FL,ODC-JBR-FR,ODC-JBR-FQ])
+  // Ambil ODC dari summary
   const odcMatch = summary.match(/\[(ODC[^\]]+)\]/);
   const odcList = odcMatch ? odcMatch[1] : "";
   
-  // Ambil ODP dari summary (format: [ODP-JBR-FK/37, ODP-JBR-FK/35, ODP-JBR-FK/36])
+  // Ambil ODP dari summary
   const odpMatches = summary.match(/\[(ODP[^\]]+)\]/g);
   const odpList = odpMatches && odpMatches.length > 0 ? odpMatches[0] : "";
   
-  // Ambil PIC dari summary (format: (PIC NYOMAN ARNAWA +6285333627545))
+  // Ambil PIC dari summary
   const picMatch = summary.match(/\(PIC ([^)]+)\)/);
   const pic = picMatch ? picMatch[1] : "";
   
@@ -568,8 +518,7 @@ function formatGamasRow(row, index) {
   const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
   const ibooster = iboosterMatch ? iboosterMatch[1] : "";
   
-  // Format duration dari TTR END TO END (format: HH:MM:SS)
-  // Konversi ke format "X jam Y Menit"
+  // Format duration dari TTR END TO END
   let durationFormatted = ttrEndToEnd;
   if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
     const parts = ttrEndToEnd.split(':');
@@ -590,26 +539,24 @@ function formatGamasRow(row, index) {
   }
   
   return (
-  `${index}. ${incident} ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi}) | [${odcList}] | Datek ODP Terdampak : [${odpList}] | (PIC ${pic}) | ${ibooster}\n` +
-  `Update : ${worklog}\n` +
-  `Duration downtime : ${durationFormatted}\n\n` +
-  `Impacted Service :\n` +
-  `NODEB : 0\n` +
-  `BROADBAND : 0\n` +
-  `EBIS : 0\n` +
-  `WIFI : 0\n\n` +
-  `Pelanggan Terganggu :\n` +
-  `NODEB : 0\n` +
-  `BROADBAND : 0\n` +
-  `EBIS : 0\n` +
-  `WIFI : 0\n\n`
-);
+    `${index}. ${incident} ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi}) | [${odcList}] | Datek ODP Terdampak : [${odpList}] | (PIC ${pic}) | ${ibooster}\n` +
+    `Update : ${worklog}\n` +
+    `Duration downtime : ${durationFormatted}\n\n` +
+    `Impacted Service :\n` +
+    `NODEB : 0\n` +
+    `BROADBAND : 0\n` +
+    `EBIS : 0\n` +
+    `WIFI : 0\n\n` +
+    `Pelanggan Terganggu :\n` +
+    `NODEB : 0\n` +
+    `BROADBAND : 0\n` +
+    `EBIS : 0\n` +
+    `WIFI : 0\n\n`
+  );
 }
 
 // Fungsi untuk menampilkan modal GAMAS
-// Fungsi untuk menampilkan modal GAMAS
 function showGamasModal(text) {
-  // Cek apakah modal sudah ada, jika belum buat baru
   let modal = document.getElementById("gamasModal");
   
   if (!modal) {
@@ -618,33 +565,32 @@ function showGamasModal(text) {
     modal.style.cssText = `
       display: none;
       position: fixed;
-      top: 20px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
       width: 90%;
       max-width: 900px;
-      max-height: 90vh;
+      max-height: 80vh;
       z-index: 9999;
     `;
     
     modal.innerHTML = `
-      <div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: sticky; top: 0; background: white; padding: 10px 0; z-index: 10;">
           <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">LAPORAN GAMAS DM</h3>
           <button id="closeGamasTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b; line-height:1; padding:0 8px;">&times;</button>
         </div>
-        <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; box-sizing:border-box;"></textarea>
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-          <button id="copyGamas" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">📋 Copy</button>
-          <button id="downloadGamas" style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">📥 Download</button>
-          <button id="closeGamas" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600; transition:all 0.2s;">✕ Close</button>
+        <textarea id="gamasText" style="width:100%; height:350px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; box-sizing:border-box;"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end; position: sticky; bottom: 0; background: white; padding: 10px 0;">
+          <button id="copyGamas" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">📋 Copy</button>
+          <button id="downloadGamas" style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">📥 Download</button>
+          <button id="closeGamas" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">✕ Close</button>
         </div>
       </div>
     `;
     
     document.body.appendChild(modal);
     
-    // Buat overlay
     const overlay = document.createElement("div");
     overlay.id = "gamasOverlay";
     overlay.style.cssText = `
@@ -660,7 +606,6 @@ function showGamasModal(text) {
     `;
     document.body.appendChild(overlay);
     
-    // Event listeners
     document.getElementById("copyGamas").addEventListener("click", () => {
       const textarea = document.getElementById("gamasText");
       navigator.clipboard.writeText(textarea.value);
@@ -690,38 +635,25 @@ function showGamasModal(text) {
     overlay.addEventListener("click", closeModal);
   }
   
-  // Isi text dan tampilkan modal
   document.getElementById("gamasText").value = text;
   modal.style.display = "block";
   document.getElementById("gamasOverlay").style.display = "block";
-  
-  // Scroll otomatis ke atas modal
   modal.scrollTop = 0;
 }
 
-// Ganti event listener exportExcel dengan fungsi baru
+// ================= BUTTON EXPORT GAMAS DM =================
 document.getElementById("exportExcel").addEventListener("click", () => {
-  // Cek apakah ALL_DATA kosong (belum upload file)
   if (!ALL_DATA.length) {
     alert("Silahkan upload file CSV terlebih dahulu!");
     return;
   }
-
-  // LANGSUNG EKSEKUSI dengan ALL_DATA, tanpa notifikasi atau confirm
   exportLaporanGamasDM(ALL_DATA);
 });
 
-
-//====== EXPORT K EXCEL 
+// ================= EXPORT EXCEL JATIM BALNUS =================
 function exportJatimBalnusExcel(data) {
-
   const headers = [
-    "NO",
-    "INCIDENT",
-    "WORKZONE",
-    "SUMMARY",
-    "WORKLOGSUMMARY",
-    "STATUS"
+    "NO", "INCIDENT", "WORKZONE", "SUMMARY", "WORKLOGSUMMARY", "STATUS"
   ];
 
   const jatimZones = ["SDY","SBY","MLG","KDR","JBR","BWI","PBL","JBG"];
@@ -745,14 +677,12 @@ function exportJatimBalnusExcel(data) {
 
     if (isZone(row.WORKZONE, jatimZones)) {
       jatim.push(record);
-    } 
-    else if (isZone(row.WORKZONE, balnusZones)) {
+    } else if (isZone(row.WORKZONE, balnusZones)) {
       balnus.push(record);
     }
   });
 
   const wb = XLSX.utils.book_new();
-
   const wsJatim = XLSX.utils.aoa_to_sheet([headers, ...jatim]);
   const wsBalnus = XLSX.utils.aoa_to_sheet([headers, ...balnus]);
 
@@ -762,8 +692,7 @@ function exportJatimBalnusExcel(data) {
   XLSX.writeFile(wb, "LAPORAN_GAMAS_JATIM_BALNUS.xlsx");
 }
 
-
-//=== FUNGSI BARU FILTER BADGE COUNTER ===
+// ================= STATUS BADGES =================
 function renderStatusBadges(data) {
   const box = document.getElementById('statusBadges');
   if (!box) return;
@@ -783,75 +712,18 @@ function renderStatusBadges(data) {
   });
 }
 
-
 // ================= SEARCH =================
-//document.getElementById("btnSearch")?.addEventListener("click", () => {
-//  const keyword = document.getElementById("searchInput").value.trim();
-//
-//  if (!keyword) {
-//    renderData(ALL_DATA);
-//    return;
-//  }
-//
-//  const incList = keyword
-//    .split(',')
-//    .map(i => i.trim().toUpperCase())
-//    .filter(Boolean);
-//
-//  const filtered = ALL_DATA.filter(row =>
-//    incList.includes((row["INCIDENT"] || "").toUpperCase())
-//  );
-//
-//  renderData(filtered);
-//});
-
-// ====== SEARCH BARU =========
 document.getElementById("btnSearch")?.addEventListener("click", () => {
   applyFilters();
 });
-
-
-
 
 // ================= THEME =================
 document.getElementById("themeToggle")?.addEventListener("click", () => {
   document.body.classList.toggle("light");
 });
 
-
-//  ==========FUNGSI FILTER ===========
-function applyFilters() {
-  let data = [...ALL_DATA];
-
-  // FILTER STATUS (MULTI)
-  if (ACTIVE_STATUSES.length > 0) {
-    data = data.filter(row =>
-      ACTIVE_STATUSES
-        .map(s => s.toUpperCase())
-        .includes((row['STATUS'] || '').toUpperCase())
-    );
-  }
-
-  // FILTER SEARCH INCIDENT
-  const keyword = document.getElementById("searchInput")?.value.trim();
-  if (keyword) {
-    const incList = keyword
-      .split(',')
-      .map(i => i.trim().toUpperCase())
-      .filter(Boolean);
-
-    data = data.filter(row =>
-      incList.includes((row["INCIDENT"] || "").toUpperCase())
-    );
-  }
-
-  renderData(data);
-}
-
-
-
-// =============COPY JATIM BALNUS =============
-function copyColumn(type){
+// ================= COPY JATIM BALNUS =================
+function copyColumn(type) {
   const box = document.querySelector(`#${type} .content`);
   if (!box || !box.children.length) {
     alert('Tidak ada data untuk di-copy');
@@ -859,11 +731,11 @@ function copyColumn(type){
   }
 
   let text = '';
-  box.querySelectorAll('.card').forEach(card=>{
+  box.querySelectorAll('.card').forEach(card => {
     text += card.innerText.trim() + '\n\n';
   });
 
-  navigator.clipboard.writeText(text.trim()).then(()=>{
+  navigator.clipboard.writeText(text.trim()).then(() => {
     alert(`Data ${type.toUpperCase()} berhasil di-copy`);
   });
 }
@@ -888,7 +760,6 @@ function pickBetween(text, start, end) {
 
 function formatMultiLineBlock(text) {
   if (!text || text === '-') return '-';
-
   return text
     .replace(/NODEB\s*:?\s*(\d+)/i, 'NODEB $1')
     .replace(/BROADBAND\s*:?\s*(\d+)/i, '\nBROADBAND $1')
@@ -899,7 +770,7 @@ function formatMultiLineBlock(text) {
 
 function cleanCC(text) {
   return text
-    .split('Surveillance')[0]   // potong sebelum Surveillance
+    .split('Surveillance')[0]
     .split('REPORT INTERNAL')[0]
     .split('Contact Center')[0]
     .trim();
@@ -909,21 +780,18 @@ function formatAction(text) {
   return text.replace(/(\d{2}:\d{2}\sWIB\s:)/g, '\n$1').trim();
 }
 
-
-function convertEskalasi(){
-  convertTelegram();   // DATA B (ASLI)
-  convertWhatsApp();   // WHATSAPP (BARU)
+function convertEskalasi() {
+  convertTelegram();
+  convertWhatsApp();
 }
 
-function extractROCName(raw){
+function extractROCName(raw) {
   const m = raw.match(/Surveillance\s+ROC5\s*[-–]\s*([A-Za-z ]+?)(?:\*|\n|REPORT|$)/i);
   return m ? m[1].trim() : '-';
 }
 
-
 function convertTelegram() {
   const raw = cleanText(document.getElementById('eskInput').value);
-
   const result = `
 Kepada : ${pickBetween(raw,'Kepada :','*Current status')}
 Current status : ${pickBetween(raw,'Current status :','Nomor Tiket')}
@@ -976,69 +844,52 @@ Contact Center:
 Free Call : 0800-1-353000
 TSEL : 0811-3081-500
 `.trim();
-
   document.getElementById('eskOutput').value = result;
 }
 
-function extractCC(raw){
+function extractCC(raw) {
   const idx = raw.indexOf('CC :');
   if (idx === -1) return '-';
-
   let cc = raw.substring(idx + 4);
-
-  // potong kalau ketemu pemutus
   cc = cc.split(/REPORT INTERNAL|Contact Center|Last update|Surveillance/i)[0];
-
-  // bersihkan simbol & spasi
-  cc = cc
-    .replace(/\*/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
+  cc = cc.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
   return cc || '-';
 }
 
-function getLastUpdate(raw){
+function getLastUpdate(raw) {
   const m = raw.match(/Last update\s*:\s*(.+)/i);
   return m ? `Last update : ${m[1].trim()}` : '';
 }
 
-
-// ======================= FUNGSI WHATSAAPP===============
-function convertWhatsApp(){
+function convertWhatsApp() {
   const rawFull = document.getElementById('eskInput').value;
   const raw = stripOldFooter(rawFull);
-  const lokasi   = pickBetween(raw,'LOKASI :','Urgency');
-  const start    = pickBetween(raw,'Start Time :','End Time');
-  const durasi   = pickBetween(raw,'Duration Time :','Headline');
-  const tiket    = pickBetween(raw,'Nomor Tiket :','NE');
-  const pic      = pickBetween(raw,'PIC :','CC');
-
+  const lokasi = pickBetween(raw,'LOKASI :','Urgency');
+  const start = pickBetween(raw,'Start Time :','End Time');
+  const durasi = pickBetween(raw,'Duration Time :','Headline');
+  const tiket = pickBetween(raw,'Nomor Tiket :','NE');
+  const pic = pickBetween(raw,'PIC :','CC');
   const headline = pickBetween(raw,'Headline :','Impacted Service');
-
   const impactedService = formatMultiLineBlock(
     pickBetween(raw,'*Impacted Service* :','*Pelanggan Terganggu* :')
   );
-
   const pelanggan = formatMultiLineBlock(
     pickBetween(raw,'*Pelanggan Terganggu* :','Perangkat Terganggu')
   );
-
   const perangkat = pickBetween(raw,'Perangkat Terganggu :','Penyebab gangguan');
-  const penyebab  = pickBetween(raw,'Penyebab gangguan:','Action');
-
+  const penyebab = pickBetween(raw,'Penyebab gangguan:','Action');
   const ticketState = detectTicketState(raw);
-  const lastAction  = getLastAction(raw);
+  const lastAction = getLastAction(raw);
 
   let progressLine = '';
-  let closingLine  = '';
+  let closingLine = '';
 
   if (ticketState === 'CLOSED') {
     progressLine = `sudah CLOSED setelah ${lastAction}`;
-    closingLine  = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} sudah CLOSED.`;
+    closingLine = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} sudah CLOSED.`;
   } else {
     progressLine = `Progres sampai saat ini : ${lastAction}`;
-    closingLine  = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} masih dalam pengecekan.`;
+    closingLine = `Demikian kami sampaikan, gangguan dengan tiket ${tiket} masih dalam pengecekan.`;
   }
 
   const wa = `
@@ -1079,85 +930,58 @@ ${formatWAFooter(raw)}
   document.getElementById('eskOutputWA').value = wa;
 }
 
-
-
-// esklasi wa pembaruan 
-function buildWACriticalLine(raw){
+function buildWACriticalLine(raw) {
   let cause = detectCauseFromHeadline(raw);
-
-  // fallback ke isi teks
   if (!cause) {
     const upper = raw.toUpperCase();
     if (upper.includes('GPON')) cause = 'GPON DOWN';
     else if (upper.includes('FEEDER')) cause = 'FEEDER PUTUS';
     else cause = 'AKSES DOWN';
   }
-
   let lokasi = pickBetween(raw, 'LOKASI :', 'Urgency');
   if (!lokasi || lokasi === '-') {
     lokasi = pickBetween(raw, 'LOKASI :', 'Start Time');
   }
   if (!lokasi || lokasi === '-') lokasi = 'STO';
-
   return `Kami laporkan gangguan CRITICAL akibat ${cause} di STO ${lokasi}`;
 }
 
-
-// baru lagi 
-function detectCauseFromHeadline(raw){
+function detectCauseFromHeadline(raw) {
   const headline = pickBetween(raw, 'Headline :', 'Impacted Service').toUpperCase();
-
   if (!headline || headline === '-') return null;
-
-  // deteksi sebelum TIF
   if (/FEEDER\s*\|?\s*TIF/i.test(headline)) return 'FEEDER PUTUS';
   if (/GPON\s*\|?\s*TIF/i.test(headline)) return 'GPON DOWN';
-
-  // fallback simple
   if (headline.includes('FEEDER')) return 'FEEDER PUTUS';
   if (headline.includes('GPON')) return 'GPON DOWN';
-
   return null;
 }
 
-function detectTicketState(raw){
+function detectTicketState(raw) {
   const status = pickBetween(raw,'Current status :','Nomor Tiket').toUpperCase();
-
   if (status.includes('CLOSED')) return 'CLOSED';
-
   if (raw.toUpperCase().includes(' CLOSED')) return 'CLOSED';
-
   return 'UPDATE';
 }
 
-function getLastAction(raw){
+function getLastAction(raw) {
   const actionBlock = pickBetween(raw,'Action :','PIC');
   if (!actionBlock || actionBlock === '-') return '-';
-
-  // pecah berdasarkan WIB
   const parts = actionBlock.split(/\d{2}:\d{2}\sWIB\s*:/i)
     .map(p => p.trim())
     .filter(Boolean);
-
-  // ambil progres terakhir
   let last = parts.length ? parts[parts.length - 1] : actionBlock;
-
-  // bersihkan sisa jam kalau masih ada
   last = last.replace(/\d{2}:\d{2}\sWIB/gi, '').trim();
-
   return last;
 }
 
-function stripOldFooter(raw){
+function stripOldFooter(raw) {
   const idx = raw.search(/Surveillance\s+ROC/i);
   if (idx === -1) return raw;
   return raw.substring(0, idx).trim();
 }
 
-
-function formatWAFooter(raw){
+function formatWAFooter(raw) {
   const rocName = extractROCName(raw) || '-';
-
   return `
 Surveillance ROC5 - ${rocName}
 
@@ -1175,8 +999,6 @@ ${getLastUpdate(raw)}
 `.trim();
 }
 
-
-
 function copyEskalasi() {
   const o = document.getElementById('eskOutput');
   o.select();
@@ -1184,39 +1006,30 @@ function copyEskalasi() {
   alert('Data eskalasi berhasil di-copy');
 }
 
-function copyWA(){
+function copyWA() {
   const o = document.getElementById('eskOutputWA');
   o.select();
   document.execCommand('copy');
   alert('Format WhatsApp berhasil di-copy');
 }
 
-
-
 // ================= CRA MODULE =================
-
-// simpan data CRA hasil olahan
 let CRA_DATA = [];
 
-//TAMBAHAN ONSKEJUL
-function getStatusClass(val){
+function getStatusClass(val) {
   if (val === 'ON SCHEDULE') return 'on';
   if (val === 'CANCEL') return 'cancel';
   return 'wait';
 }
 
-// helper: parse CSV sederhana
 function parseCRACSV(text) {
   text = text.replace(/^\uFEFF/, '');
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return [];
-
   let delimiter = ',';
   if (lines[0].includes(';')) delimiter = ';';
   if (lines[0].includes('\t')) delimiter = '\t';
-
   const headers = lines.shift().split(delimiter).map(h => h.trim());
-
   return lines.map(line => {
     const cols = line.split(delimiter);
     const o = {};
@@ -1227,37 +1040,25 @@ function parseCRACSV(text) {
   });
 }
 
-// ambil angka CRA (CRA.146475 -> 146475)
 function getCRANumber(noCRA = '') {
   const m = noCRA.match(/CRA\.(\d+)/i);
   return m ? m[1] : null;
 }
 
-// ============= render tabel CRA =============
 function renderCRA(data) {
   const tbody = document.querySelector('#craTable tbody');
   if (!tbody) return;
-
   tbody.innerHTML = '';
-
   if (!data.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="10" class="empty">Data CRA tidak ditemukan</td>
-      </tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Data CRA tidak ditemukan</td></tr>`;
     return;
   }
-
   let no = 1;
-
   data.forEach(row => {
     if (!row.status) row.status = 'BELUM DIISI';
-
     const tr = document.createElement('tr');
-
     tr.innerHTML = `
       <td>${no++}</td>
-
       <td>
         <select class="cra-status ${getStatusClass(row.status)}">
           <option ${row.status==='ON SCHEDULE'?'selected':''}>ON SCHEDULE</option>
@@ -1265,44 +1066,31 @@ function renderCRA(data) {
           <option ${row.status==='CANCEL'?'selected':''}>CANCEL</option>
         </select>
       </td>
-
       <td>${row.noCRA}</td>
       <td>${row.deskripsi}</td>
       <td>${row.lokasi.join(', ')}</td>
-	  <td>${row.kota}</td>
+      <td>${row.kota}</td>
       <td>${row.regional}</td>
       <td>${row.pic}</td>
       <td>${row.tanggal}</td>
       <td>${row.waktu}</td>
       <td>${row.crq}</td>
     `;
-
-    // simpan perubahan status
     tr.querySelector('select').addEventListener('change', e => {
       row.status = e.target.value;
       e.target.className = `cra-status ${getStatusClass(row.status)}`;
     });
-
     tbody.appendChild(tr);
   });
 }
 
-// proses data CRA
-
-function formatExcelDate(v){
+function formatExcelDate(v) {
   if (!v) return '';
-
-  // jika sudah Date object
-  if (v instanceof Date) {
-    return v.toISOString().split('T')[0];
-  }
-
-  // jika NUMBER (serial Excel)
+  if (v instanceof Date) return v.toISOString().split('T')[0];
   if (typeof v === 'number') {
     const date = new Date(Math.round((v - 25569) * 86400 * 1000));
     return date.toISOString().split('T')[0];
   }
-
   return v;
 }
 
@@ -1310,9 +1098,7 @@ function pickField(row, names = []) {
   for (const key of Object.keys(row)) {
     const clean = key.toUpperCase().replace(/\s+/g,' ').trim();
     for (const n of names) {
-      if (clean === n.toUpperCase()) {
-        return row[key];
-      }
+      if (clean === n.toUpperCase()) return row[key];
     }
   }
   return '';
@@ -1320,23 +1106,14 @@ function pickField(row, names = []) {
 
 function processCRA(rawData) {
   const map = new Map();
-
   rawData.forEach(row => {
     const regional = (row['REGIONAL'] || '').toUpperCase();
-   // if (!regional.includes('REG 5')) return;
-   // hanya ambil Reg 5 atau All Reg
-	if (!regional.includes('REG 5') && !regional.includes('ALL REG')) return;
-    
+    if (!regional.includes('REG 5') && !regional.includes('ALL REG')) return;
     const noCRA = row['No CRA'] || row['NO CRA'] || '';
     const key = getCRANumber(noCRA);
     if (!key) return;
-
     const lokasiRaw = row['LOKASI'] || '';
-    const lokasiArr = lokasiRaw
-      .split(',')
-      .map(l => l.trim())
-      .filter(Boolean);
-
+    const lokasiArr = lokasiRaw.split(',').map(l => l.trim()).filter(Boolean);
     if (!map.has(key)) {
       map.set(key, {
         noCRA,
@@ -1346,162 +1123,95 @@ function processCRA(rawData) {
         kota: row['WITEL'] || row['KOTA'] || row['CITY'] || '',
         segment: row['SEGMENT'] || '',
         pic: row['PIC'] || '',
-        // tanggal: row['TANGGAL'] || row['DATE'] || '',
-        //waktu: row['WAKTU'] || row['JAM'] || '',
-        tanggal: formatExcelDate(
-		  pickField(row, [
-			'TGL_MULAI',
-			'TGL MULAI',
-			'TANGGAL',
-			'DATE'
-		  ])
-		),
-
-		waktu: pickField(row, [
-		  'WAKTU SETEMPAT',
-		  'WAKTU',
-		  'JAM',
-		  'START-END',
-		  'START - END'
-		]),
-		durasi: row['DURASI'] || '',
+        tanggal: formatExcelDate(pickField(row, ['TGL_MULAI','TGL MULAI','TANGGAL','DATE'])),
+        waktu: pickField(row, ['WAKTU SETEMPAT','WAKTU','JAM','START-END','START - END']),
+        durasi: row['DURASI'] || '',
         tipe: row['TIPE'] || '',
         pelaksana: row['PELAKSANA'] || '',
         metode: row['METODE'] || '',
         crq: row['CRQ'] || ''
       });
     } else {
-      // gabungkan lokasi jika CRA sama
       const existing = map.get(key);
       lokasiArr.forEach(l => {
-        if (!existing.lokasi.includes(l)) {
-          existing.lokasi.push(l);
-        }
+        if (!existing.lokasi.includes(l)) existing.lokasi.push(l);
       });
     }
   });
-
   CRA_DATA = Array.from(map.values());
   renderCRA(CRA_DATA);
 }
- 
-
-// ================= CRA EXCEL SUPPORT =================
 
 function parseCRAExcel(arrayBuffer) {
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-
-  // convert sheet to JSON
-  return XLSX.utils.sheet_to_json(sheet, {
-    defval: '',
-    //raw: false
-	raw: true,        // 🔥 INI KUNCI UTAMA
-    cellDates: true  // 🔥 PENTING UNTUK TANGGAL
-  });
+  return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true, cellDates: true });
 }
 
- 
-// override event upload CRA (CSV + XLS)
 document.getElementById('craFile')?.addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
-
   const ext = file.name.split('.').pop().toLowerCase();
   const reader = new FileReader();
-
   if (ext === 'xls' || ext === 'xlsx') {
     reader.onload = evt => {
       const data = parseCRAExcel(evt.target.result);
       processCRA(data);
       CRA_RESULT = CRA_DATA;
-	  
-	   // 🔥 TAMBAH INI
-  window.CRA_RESULT = CRA_RESULT;
-  window.DISTRICT_DB = DISTRICT_DB;
-  
+      window.CRA_RESULT = CRA_RESULT;
+      window.DISTRICT_DB = DISTRICT_DB;
     };
     reader.readAsArrayBuffer(file);
     return;
   }
-
   reader.onload = () => {
     const text = reader.result;
     const data = parseCRACSV(text);
     processCRA(data);
     CRA_RESULT = CRA_DATA;
-	 // 🔥 TAMBAH INI
-  window.CRA_RESULT = CRA_RESULT;
-  window.DISTRICT_DB = DISTRICT_DB;
-  
+    window.CRA_RESULT = CRA_RESULT;
+    window.DISTRICT_DB = DISTRICT_DB;
   };
   reader.readAsText(file);
 });
 
-// ================= EXPORT CRA TO EXCEL =================
-
-function statusWithIcon(status){
+function statusWithIcon(status) {
   if (status === 'ON SCHEDULE') return 'ON SCHEDULE ✅';
   if (status === 'CANCEL') return 'CANCEL ❌';
   return 'BELUM DIISI ⌛️';
 }
 
 function exportCRAtoExcel() {
-  if (!CRA_DATA.length) {
-    alert('Data CRA kosong');
-    return;
-  }
-  
-const rows = CRA_DATA.map((row, i) => ({
-  No: i + 1,
-  Status: row.status || 'BELUM DIISI',
-  Status: statusWithIcon(row.status),
-  No_CRA: row.noCRA,
-  Judul: row.deskripsi,
-  Lokasi: row.lokasi.join(', '),
-  Regional: row.regional,
-  PIC: row.pic,
-  Tanggal: row.tanggal,
-  Waktu: row.waktu,
-  CRQ: row.crq
-}));
-
-
+  if (!CRA_DATA.length) { alert('Data CRA kosong'); return; }
+  const rows = CRA_DATA.map((row, i) => ({
+    No: i + 1,
+    Status: statusWithIcon(row.status),
+    No_CRA: row.noCRA,
+    Judul: row.deskripsi,
+    Lokasi: row.lokasi.join(', '),
+    Regional: row.regional,
+    PIC: row.pic,
+    Tanggal: row.tanggal,
+    Waktu: row.waktu,
+    CRQ: row.crq
+  }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'CRA Reg 5');
-
   XLSX.writeFile(wb, 'CRA_REG5.xlsx');
 }
 
-// EXPORT TEXT NOTEPAD 
 function exportCRAtoTXT() {
-  if (!CRA_DATA.length) {
-    alert('Data CRA kosong');
-    return;
-  }
-
+  if (!CRA_DATA.length) { alert('Data CRA kosong'); return; }
   const total = CRA_DATA.length;
-
-  const count = {
-    'ON SCHEDULE': 0,
-    'CANCEL': 0,
-    'BELUM DIISI': 0
-  };
-
-  CRA_DATA.forEach(r => {
-    const s = r.status || 'BELUM DIISI';
-    count[s]++;
-  });
-
-  let txt = '';
-  txt += `KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\n\n`;
+  const count = { 'ON SCHEDULE': 0, 'CANCEL': 0, 'BELUM DIISI': 0 };
+  CRA_DATA.forEach(r => { const s = r.status || 'BELUM DIISI'; count[s]++; });
+  let txt = `KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\n\n`;
   txt += `ON SCHEDULE : ${count['ON SCHEDULE']}\n`;
   txt += `CANCEL : ${count['CANCEL']}\n`;
   txt += `BELUM DIISI : ${count['BELUM DIISI']}\n`;
   txt += `TOTAL : ${total}\n\n\n`;
-
   CRA_DATA.forEach((row, i) => {
     txt += `${i + 1}. ${statusWithIcon(row.status || 'BELUM DIISI')}\n`;
     txt += `${row.noCRA}\n`;
@@ -1513,253 +1223,103 @@ function exportCRAtoTXT() {
     txt += `Lokasi : ${row.lokasi.join(', ')}\n\n\n`;
     txt += `--------------------------------------------------\n\n`;
   });
-
   const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
   a.download = 'CRA_MALAM_INI.txt';
   document.body.appendChild(a);
   a.click();
-
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-
-// export bu amel 
-document.getElementById("btnExportTXTAmel").addEventListener("click", function () {
-
+document.getElementById("btnExportTXTAmel").addEventListener("click", function() {
   if (!CRA_RESULT || CRA_RESULT.length === 0) {
     alert("Data CRA belum diupload.");
     return;
   }
-
   let hasil = [];
-
-// ===== HITUNG SUMMARY =====
-let total = CRA_RESULT.length;
-
-let onSchedule = CRA_RESULT.filter(r => r.status === "ON SCHEDULE").length;
-let cancel = CRA_RESULT.filter(r => r.status === "CANCEL").length;
-let belumDiisi = CRA_RESULT.filter(r => r.status === "BELUM DIISI").length;
-
-// Header Summary
-hasil.push(
-`KEGIATAN CRA MALAM INI : ${total} KEGIATAN
-
-ON SCHEDULE : ${onSchedule}
-CANCEL : ${cancel}
-BELUM DIISI : ${belumDiisi}
-TOTAL : ${total}
-
-`
-);
-
-console.log(CRA_RESULT[0])
+  let total = CRA_RESULT.length;
+  let onSchedule = CRA_RESULT.filter(r => r.status === "ON SCHEDULE").length;
+  let cancel = CRA_RESULT.filter(r => r.status === "CANCEL").length;
+  let belumDiisi = CRA_RESULT.filter(r => r.status === "BELUM DIISI").length;
+  hasil.push(`KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\nON SCHEDULE : ${onSchedule}\nCANCEL : ${cancel}\nBELUM DIISI : ${belumDiisi}\nTOTAL : ${total}\n\n`);
   CRA_RESULT.forEach((row, index) => {
-
     let noCraFull = row.noCRA || "";
     let noCra = noCraFull.split("/")[0].trim();
-
     let judul = row.deskripsi || "";
-	let region = (row.kota || "").toUpperCase();
-	let pic = PIC_DB[region] || "";
-    // lokasi kamu berupa array
-    let lokasi = Array.isArray(row.lokasi)
-      ? row.lokasi.join(", ")
-      : (row.lokasi || "");
-
-    let text =
-`${index + 1}. ${noCra}
-KEGIATAN : ${judul}
-REGION : ${region}
-LOKASI : ${lokasi}
-PIC : ${pic}
-
-`;
-
-    hasil.push(text);
+    let region = (row.kota || "").toUpperCase();
+    let pic = PIC_DB[region] || "";
+    let lokasi = Array.isArray(row.lokasi) ? row.lokasi.join(", ") : (row.lokasi || "");
+    hasil.push(`${index + 1}. ${noCra}\nKEGIATAN : ${judul}\nREGION : ${region}\nLOKASI : ${lokasi}\nPIC : ${pic}\n\n`);
   });
-
   const blob = new Blob([hasil.join("\n")], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
   a.href = url;
   a.download = "EXPORT_TXT_PERMINTAAN_BU_AMEL.txt";
   a.click();
-
   URL.revokeObjectURL(url);
 });
 
-
-//button resume cra
-//button resume cra
+// ================= BUTTON RESUME CRA =================
 document.getElementById("btnResumeCRA").addEventListener("click", () => {
   if (!CRA_RESULT.length) {
     alert("Data CRA kosong.");
     return;
   }
 
-  console.log("CRA_RESULT sample:", CRA_RESULT[0]);
-
-  // ========== INISIALISASI 10 DISTRICT UTAMA ==========
   const mainDistricts = [
     "DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER",
     "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA"
   ];
   
-  // Inisialisasi resume dengan nilai 0 untuk semua district
   let resume = {};
   mainDistricts.forEach(district => {
-    resume[district] = {
-      total: 0,
-      on: 0,
-      belum: 0,
-      cancel: 0
-    };
+    resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
   });
-  
-  // Tambahkan UNMAPPED
-  resume["UNMAPPED"] = {
-    total: 0,
-    on: 0,
-    belum: 0,
-    cancel: 0
-  };
+  resume["UNMAPPED"] = { total: 0, on: 0, belum: 0, cancel: 0 };
 
-  // ========== MAPPING MANUAL LENGKAP ==========
   const manualMapping = {
-    // SURABAYA (termasuk Madura)
-    "SBY": "SURABAYA",
-    "SURABAYA": "SURABAYA",
-    "SURABAYA SELATAN": "SURABAYA",
-    "SURABAYA UTARA": "SURABAYA",
-    "SURABAYA TIMUR": "SURABAYA",
-    "SURABAYA BARAT": "SURABAYA",
-    "SURABAYA PUSAT": "SURABAYA",
-    "MADURA": "SURABAYA",
-    "BANGKALAN": "SURABAYA",
-    "SAMPANG": "SURABAYA",
-    "PAMEKASAN": "SURABAYA",
-    "SUMENEP": "SURABAYA",
-    
-    // MALANG
-    "MLG": "MALANG",
-    "MALANG": "MALANG",
-    "BATU": "MALANG",
-    "BLITAR": "MALANG",
-    "TULUNGAGUNG": "MALANG",
-    
-    // SIDOARJO
-    "SDA": "SIDOARJO",
-    "SIDOARJO": "SIDOARJO",
-    "MOJOKERTO": "SIDOARJO",
-    "PASURUAN": "SIDOARJO",
-    "JOMBANG": "SIDOARJO",
-    
-    // JEMBER
-    "JBR": "JEMBER",
-    "JEMBER": "JEMBER",
-    "BANYUWANGI": "JEMBER",
-    "BONDOWOSO": "JEMBER",
-    "SITUBONDO": "JEMBER",
-    "LUMAJANG": "JEMBER",
-    "PROBOLINGGO": "JEMBER",
-    
-    // MADIUN
-    "MDN": "MADIUN",
-    "MADIUN": "MADIUN",
-    "KEDIRI": "MADIUN",
-    "NGANJUK": "MADIUN",
-    "MAGETAN": "MADIUN",
-    "NGAWI": "MADIUN",
-    "PACITAN": "MADIUN",
-    "PONOROGO": "MADIUN",
-    "TRENGGALEK": "MADIUN",
-    
-    // LAMONGAN
-    "LMG": "LAMONGAN",
-    "LAMONGAN": "LAMONGAN",
-    "GRESIK": "LAMONGAN",
-    "BOJONEGORO": "LAMONGAN",
-    "TUBAN": "LAMONGAN",
-    
-    // DENPASAR (BALI)
-    "DPS": "DENPASAR",
-    "DENPASAR": "DENPASAR",
-    "BADUNG": "DENPASAR",
-    "GIANYAR": "DENPASAR",
-    "TABANAN": "DENPASAR",
-    "BANGLI": "DENPASAR",
-    "KARANGASEM": "DENPASAR",
-    "KLUNGKUNG": "DENPASAR",
-    "UBUD": "DENPASAR",
-    "KUTA": "DENPASAR",
-    "NUSA DUA": "DENPASAR",
-    "SANUR": "DENPASAR",
-    "SEMINYAK": "DENPASAR",
-    "BALI": "DENPASAR",
-    
-    // FLORES
-    "FLORES": "FLORES",
-    "ENDE": "FLORES",
-    "MAUMERE": "FLORES",
-    "LARANTUKA": "FLORES",
-    "LABUAN BAJO": "FLORES",
-    "RUTENG": "FLORES",
-    "BAJAWA": "FLORES",
-    
-    // KUPANG (TIMOR)
-    "KUPANG": "KUPANG",
-    "TIMOR": "KUPANG",
-    "SUMBA": "KUPANG",
-    "ROTE": "KUPANG",
-    "ATAMBUA": "KUPANG",
-    "KEFAMENANU": "KUPANG",
-    "SOE": "KUPANG",
-    "WAIKABUBAK": "KUPANG",
-    "WAINGAPU": "KUPANG",
-    "NTT": "KUPANG",
-    
-    // MATARAM (LOMBOK)
-    "MATARAM": "MATARAM",
-    "LOMBOK": "MATARAM",
-    "SUMBAWA": "MATARAM",
-    "BIMA": "MATARAM",
-    "PRAYA": "MATARAM",
-    "SELONG": "MATARAM",
-    "NTB": "MATARAM",
+    "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+    "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+    "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+    "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+    "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG",
+    "TULUNGAGUNG": "MALANG", "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO",
+    "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+    "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER",
+    "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER",
+    "PROBOLINGGO": "JEMBER", "MDN": "MADIUN", "MADIUN": "MADIUN",
+    "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN",
+    "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN",
+    "TRENGGALEK": "MADIUN", "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN",
+    "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+    "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR",
+    "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR",
+    "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR",
+    "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR", "SANUR": "DENPASAR",
+    "SEMINYAK": "DENPASAR", "BALI": "DENPASAR", "FLORES": "FLORES",
+    "ENDE": "FLORES", "MAUMERE": "FLORES", "LARANTUKA": "FLORES",
+    "LABUAN BAJO": "FLORES", "RUTENG": "FLORES", "BAJAWA": "FLORES",
+    "KUPANG": "KUPANG", "TIMOR": "KUPANG", "SUMBA": "KUPANG",
+    "ROTE": "KUPANG", "ATAMBUA": "KUPANG", "KEFAMENANU": "KUPANG",
+    "SOE": "KUPANG", "WAIKABUBAK": "KUPANG", "WAINGAPU": "KUPANG", "NTT": "KUPANG",
+    "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM",
+    "BIMA": "MATARAM", "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
   };
 
-  let totalAll = 0;
-  let totalOn = 0;
-  let totalBelum = 0;
-  let totalCancel = 0;
+  let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
 
-  // Proses setiap baris CRA
-  CRA_RESULT.forEach((row, index) => {
-    // Ambil witel/kota dari berbagai field
+  CRA_RESULT.forEach((row) => {
     let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
-    
-    // Bersihkan
-    let witel = witelRaw
-      .toUpperCase()
-      .replace(/[^\w\s\/-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    // ========== CARI DISTRICT ==========
+    let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim();
     let district = "UNMAPPED";
     
-    // 1. Cek manual mapping
     if (manualMapping[witel]) {
       district = manualMapping[witel];
-    }
-    // 2. Cek per kata
-    else {
+    } else {
       const words = witel.split(/[\s\/,-]+/);
       for (let word of words) {
         if (word.length >= 2 && manualMapping[word]) {
@@ -1769,39 +1329,17 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
       }
     }
     
-    // 3. Deteksi khusus
     if (district === "UNMAPPED") {
-      if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR")) {
-        district = "DENPASAR";
-      }
-      else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) {
-        district = "FLORES";
-      }
-      else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) {
-        district = "KUPANG";
-      }
-      else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) {
-        district = "MATARAM";
-      }
-      else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) {
-        district = "LAMONGAN";
-      }
-      else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) {
-        district = "MADIUN";
-      }
+      if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR")) district = "DENPASAR";
+      else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) district = "FLORES";
+      else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) district = "KUPANG";
+      else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) district = "MATARAM";
+      else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) district = "LAMONGAN";
+      else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) district = "MADIUN";
     }
 
-    // Pastikan district ada di resume
-    if (!resume[district]) {
-      resume[district] = {
-        total: 0,
-        on: 0,
-        belum: 0,
-        cancel: 0
-      };
-    }
-
-    // Update statistik
+    if (!resume[district]) resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    
     resume[district].total++;
     totalAll++;
 
@@ -1817,45 +1355,184 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     }
   });
 
-// ========== BUAT TEKS RESUME ==========
-let text = "Resume CRA\n";
-text += "[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
-
-let index = 1;
-
-// PAKAI mainDistricts YANG SUDAH ADA (dari inisialisasi)
-// Urutan tampilan sesuai keinginan
-const displayOrder = [
-  "SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN",
-  "LAMONGAN", "DENPASAR", "FLORES", "KUPANG", "MATARAM"
-];
-
-// Tampilkan 10 district sesuai urutan, meskipun totalnya 0
-displayOrder.forEach(district => {
-  if (resume[district]) {
-    let d = resume[district];
-    text += `${index}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
-    index++;
-  }
+  let text = "Resume CRA\n[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
+  let index = 1;
+  const displayOrder = ["SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN", "DENPASAR", "FLORES", "KUPANG", "MATARAM"];
+  
+  displayOrder.forEach(district => {
+    if (resume[district]) {
+      let d = resume[district];
+      text += `${index}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
+      index++;
+    }
+  });
+  
+  text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
+  
+  showResumeModal(text);
 });
 
-// UNMAPPED TIDAK DITAMPILKAN
-text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
-
-// Tampilkan di modal
-const textarea = document.getElementById("resumeText");
-const modal = document.getElementById("resumeModal");
-
-if (textarea && modal) {
-  textarea.value = text;
-  modal.style.display = "flex";
+// ================= MODAL RESUME CRA =================
+// Fungsi untuk menampilkan modal GAMAS (posisi lebih bawah)
+function showGamasModal(text) {
+  // Hapus modal lama jika ada
+  let oldModal = document.getElementById("gamasModal");
+  let oldOverlay = document.getElementById("gamasOverlay");
+  if (oldModal) oldModal.remove();
+  if (oldOverlay) oldOverlay.remove();
+  
+  // Buat overlay
+  const overlay = document.createElement("div");
+  overlay.id = "gamasOverlay";
+  overlay.style.cssText = `
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 9998;
+  `;
+  document.body.appendChild(overlay);
+  
+  // Buat modal (posisi lebih ke bawah - 180px dari atas)
+  const modal = document.createElement("div");
+  modal.id = "gamasModal";
+  modal.style.cssText = `
+    display: block;
+    position: fixed;
+    top: 180px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    z-index: 9999;
+  `;
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 80vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: sticky; top: 0; background: white; padding: 10px 0; z-index: 10;">
+        <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">LAPORAN GAMAS DM</h3>
+        <button id="closeGamasTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b; line-height:1; padding:0 8px;">&times;</button>
+      </div>
+      <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; box-sizing:border-box;">${text}</textarea>
+      <div style="display:flex; gap:10px; justify-content:flex-end; position: sticky; bottom: 0; background: white; padding: 10px 0;">
+        <button id="copyGamas" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">📋 Copy</button>
+        <button id="downloadGamas" style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">📥 Download</button>
+        <button id="closeGamas" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">✕ Close</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Event listeners (sama seperti sebelumnya)
+  document.getElementById("copyGamas").addEventListener("click", () => {
+    const textarea = document.getElementById("gamasText");
+    navigator.clipboard.writeText(textarea.value);
+    alert("Laporan berhasil di-copy!");
+  });
+  
+  document.getElementById("downloadGamas").addEventListener("click", () => {
+    const textarea = document.getElementById("gamasText");
+    const blob = new Blob([textarea.value], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `LAPORAN_GAMAS_DM_${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+  
+  const closeModal = () => {
+    modal.remove();
+    overlay.remove();
+  };
+  
+  document.getElementById("closeGamas").addEventListener("click", closeModal);
+  document.getElementById("closeGamasTop").addEventListener("click", closeModal);
+  overlay.addEventListener("click", closeModal);
 }
 
-});
+// Fungsi untuk menampilkan modal Resume CRA (posisi lebih bawah)
+function showResumeModal(text) {
+  // Hapus modal lama jika ada
+  let oldModal = document.getElementById("resumeModalNew");
+  let oldOverlay = document.getElementById("resumeOverlay");
+  if (oldModal) oldModal.remove();
+  if (oldOverlay) oldOverlay.remove();
+  
+  // Buat overlay
+  const overlay = document.createElement("div");
+  overlay.id = "resumeOverlay";
+  overlay.style.cssText = `
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 9998;
+  `;
+  document.body.appendChild(overlay);
+  
+  // Buat modal (posisi lebih ke bawah - 180px dari atas)
+  const modal = document.createElement("div");
+  modal.id = "resumeModalNew";
+  modal.style.cssText = `
+    display: block;
+    position: fixed;
+    top: 1200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    z-index: 9999;
+  `;
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 80vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: sticky; top: 0; background: white; padding: 10px 0; z-index: 10;">
+        <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Resume CRA</h3>
+        <button id="closeResumeTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b; line-height:1; padding:0 8px;">&times;</button>
+      </div>
+      <textarea id="resumeTextNew" style="width:100%; height:300px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; box-sizing:border-box;">${text}</textarea>
+      <div style="display:flex; gap:10px; justify-content:flex-end; position: sticky; bottom: 0; background: white; padding: 10px 0;">
+        <button id="copyResumeNew" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">📋 Copy</button>
+        <button id="closeResumeNew" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">✕ Close</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Event listeners
+  document.getElementById("copyResumeNew").addEventListener("click", () => {
+    const textarea = document.getElementById("resumeTextNew");
+    navigator.clipboard.writeText(textarea.value);
+    alert("Resume berhasil di-copy!");
+  });
+  
+  const closeModal = () => {
+    modal.remove();
+    overlay.remove();
+  };
+  
+  document.getElementById("closeResumeNew").addEventListener("click", closeModal);
+  document.getElementById("closeResumeTop").addEventListener("click", closeModal);
+  overlay.addEventListener("click", closeModal);
+}
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
-
   loadWorkzones();
   loadPICMapping();
   loadDistrictMapping();
@@ -1864,26 +1541,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const eskInput = document.getElementById('eskInput');
   if (eskInput) {
     eskInput.addEventListener('input', () => {
-      if (eskInput.value.trim().length > 10) {
-        convertEskalasi();
-      }
+      if (eskInput.value.trim().length > 10) convertEskalasi();
     });
   }
-
-  // Resume Modal
-  document.getElementById("copyResume")?.addEventListener("click", () => {
-    const textarea = document.getElementById("resumeText");
-    if (!textarea) return;
-    navigator.clipboard.writeText(textarea.value);
-    alert("Resume berhasil di-copy!");
-  });
-
-  document.getElementById("closeResume")?.addEventListener("click", () => {
-    document.getElementById("resumeModal").style.display = "none";
-  });
 
   document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
   document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
   document.getElementById('btnExportTXT')?.addEventListener('click', exportCRAtoTXT);
-
 });
