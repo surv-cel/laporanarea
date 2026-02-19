@@ -452,15 +452,233 @@ function applyFilters() {
 
 
 
-document.getElementById("exportExcel").addEventListener("click", () => {
-  if (!currentData.length) {
-    alert("Data kosong / belum difilter");
+// ================= EXPORT LAPORAN GAMAS DM =================
+// Fungsi baru untuk export LAPORAN GAMAS DM (menggantikan exportExcel)
+function exportLaporanGamasDM(data) {
+  console.log("Data received:", data.length); // Debug
+  
+  // Filter data yang relevan (FEEDER, DISTRIBUSI, ODP)
+  const filteredData = data.filter(row => {
+    const summary = (row["SUMMARY"] || "").toUpperCase();
+    return summary.includes("FEEDER") || summary.includes("DISTRIBUSI") || summary.includes("ODP");
+  });
+
+  console.log("Filtered data:", filteredData.length); // Debug
+
+  if (filteredData.length === 0) {
+    alert("Tidak ada data FEEDER, DISTRIBUSI, atau ODP dalam file ini.");
     return;
   }
 
-  exportJatimBalnusExcel(currentData);
-});
+  // Kelompokkan berdasarkan jenis
+  const feeder = [];
+  const distribusi = [];
+  const odp = [];
 
+  filteredData.forEach(row => {
+    const summary = (row["SUMMARY"] || "").toUpperCase();
+    
+    if (summary.includes("FEEDER")) {
+      feeder.push(row);
+    } else if (summary.includes("DISTRIBUSI")) {
+      distribusi.push(row);
+    } else if (summary.includes("ODP")) {
+      odp.push(row);
+    }
+  });
+
+  // Buat teks output
+  let output = "F. GAMAS FEEDER, DISTRIBUSI, ODP : \n\n";
+
+  // Bagian FEEDER
+  output += `- FEEDER : ${feeder.length} Tiket\n`;
+  if (feeder.length > 0) {
+    feeder.forEach((row, idx) => {
+      output += formatGamasRow(row, idx + 1);
+    });
+  } else {
+    output += "  Nihil\n";
+  }
+  output += "\n";
+
+  // Bagian DISTRIBUSI
+  output += `- DISTRIBUSI : ${distribusi.length} Tiket\n`;
+  if (distribusi.length > 0) {
+    distribusi.forEach((row, idx) => {
+      output += formatGamasRow(row, idx + 1);
+    });
+  } else {
+    output += "  Nihil\n";
+  }
+  output += "\n";
+
+  // Bagian ODP
+  output += `- ODP : ${odp.length} Tiket\n`;
+  if (odp.length > 0) {
+    odp.forEach((row, idx) => {
+      output += formatGamasRow(row, idx + 1);
+    });
+  } else {
+    output += "  Nihil\n";
+  }
+
+  // Tampilkan di modal
+  showGamasModal(output);
+}
+
+// Fungsi untuk memformat satu baris GAMAS
+// Fungsi untuk memformat satu baris GAMAS
+function formatGamasRow(row, index) {
+  const incident = row["INCIDENT"] || "-";
+  const summary = row["SUMMARY"] || "";
+  const worklog = row["WORKLOG SUMMARY"] || "-";
+  
+  // Ambil TTR END TO END dari data
+  const ttrEndToEnd = row["TTR END TO END"] || "00:00:00";
+  
+  // Parse summary untuk mendapatkan komponen
+  // Format: [SQM GAMAS] | AKSES | FEEDER | TIF-3 | REG-5 | PENYEBAB | PERBAIKAN | ...
+  const parts = summary.split('|').map(p => p.trim());
+  
+  // Ekstrak komponen dengan aman
+  const sqmGamas = parts[0] || "[SQM GAMAS]";
+  const akses = parts[1] || "AKSES";
+  const jenis = parts[2] || "";
+  const tif = parts[3] || "TIF-3";
+  const reg5 = parts[4] || "REG-5";
+  const penyebab = parts[5] || "";
+  const perbaikan = parts[6] || "";
+  const lokasiJenis = parts[7] || "";
+  const lokasi = parts[8] || "";
+  const estimasi = parts[9] || "";
+  
+  // Ambil ODC dari summary (format: [ODC-JBR-FL,ODC-JBR-FR,ODC-JBR-FQ])
+  const odcMatch = summary.match(/\[(ODC[^\]]+)\]/);
+  const odcList = odcMatch ? odcMatch[1] : "";
+  
+  // Ambil ODP dari summary (format: [ODP-JBR-FK/37, ODP-JBR-FK/35, ODP-JBR-FK/36])
+  const odpMatches = summary.match(/\[(ODP[^\]]+)\]/g);
+  const odpList = odpMatches && odpMatches.length > 0 ? odpMatches[0] : "";
+  
+  // Ambil PIC dari summary (format: (PIC NYOMAN ARNAWA +6285333627545))
+  const picMatch = summary.match(/\(PIC ([^)]+)\)/);
+  const pic = picMatch ? picMatch[1] : "";
+  
+  // Ambil Ibooster
+  const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+  const ibooster = iboosterMatch ? iboosterMatch[1] : "";
+  
+  // Format duration dari TTR END TO END (format: HH:MM:SS)
+  // Konversi ke format "X jam Y Menit"
+  let durationFormatted = ttrEndToEnd;
+  if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
+    const parts = ttrEndToEnd.split(':');
+    if (parts.length === 3) {
+      const hours = parseInt(parts[0]);
+      const minutes = parseInt(parts[1]);
+      
+      if (hours > 0 && minutes > 0) {
+        durationFormatted = `${hours} jam ${minutes} Menit`;
+      } else if (hours > 0) {
+        durationFormatted = `${hours} jam`;
+      } else if (minutes > 0) {
+        durationFormatted = `${minutes} Menit`;
+      } else {
+        durationFormatted = `${parts[2]} Detik`;
+      }
+    }
+  }
+  
+  return (
+  `${index}. ${incident} ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi}) | [${odcList}] | Datek ODP Terdampak : [${odpList}] | (PIC ${pic}) | ${ibooster}\n` +
+  `Update : ${worklog}\n` +
+  `Duration downtime : ${durationFormatted}\n\n` +
+  `Impacted Service :\n` +
+  `NODEB : 0\n` +
+  `BROADBAND : 0\n` +
+  `EBIS : 0\n` +
+  `WIFI : 0\n\n` +
+  `Pelanggan Terganggu :\n` +
+  `NODEB : 0\n` +
+  `BROADBAND : 0\n` +
+  `EBIS : 0\n` +
+  `WIFI : 0\n\n`
+);
+}
+
+// Fungsi untuk menampilkan modal GAMAS
+function showGamasModal(text) {
+  // Cek apakah modal sudah ada, jika belum buat baru
+  let modal = document.getElementById("gamasModal");
+  
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "gamasModal";
+    modal.style.cssText = `
+      display:none; 
+      position:fixed; 
+      inset:0; 
+      background:rgba(0,0,0,0.5); 
+      z-index:9999; 
+      justify-content:center; 
+      align-items:center;
+    `;
+    
+    modal.innerHTML = `
+      <div style="background:#fff; width:800px; max-width:95%; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+        <h3 style="margin-top:0; color:#333;">LAPORAN GAMAS DM</h3>
+        <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:10px; resize:none; font-family:monospace; font-size:12px; padding:8px; border:1px solid #ccc; border-radius:4px;"></textarea>
+        <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end;">
+          <button id="copyGamas" style="padding:8px 16px; background:#22c55e; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Copy</button>
+          <button id="downloadGamas" style="padding:8px 16px; background:#3b82f6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Download</button>
+          <button id="closeGamas" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Close</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Event listeners
+    document.getElementById("copyGamas").addEventListener("click", () => {
+      const textarea = document.getElementById("gamasText");
+      navigator.clipboard.writeText(textarea.value);
+      alert("Laporan berhasil di-copy!");
+    });
+    
+    document.getElementById("downloadGamas").addEventListener("click", () => {
+      const textarea = document.getElementById("gamasText");
+      const blob = new Blob([textarea.value], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `LAPORAN_GAMAS_DM_${new Date().toISOString().slice(0,10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+    
+    document.getElementById("closeGamas").addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+  }
+  
+  // Isi text dan tampilkan modal
+  document.getElementById("gamasText").value = text;
+  modal.style.display = "flex";
+}
+
+// Ganti event listener exportExcel dengan fungsi baru
+document.getElementById("exportExcel").addEventListener("click", () => {
+  // Cek apakah ALL_DATA kosong (belum upload file)
+  if (!ALL_DATA.length) {
+    alert("Silahkan upload file CSV terlebih dahulu!");
+    return;
+  }
+
+  // LANGSUNG EKSEKUSI dengan ALL_DATA, tanpa notifikasi atau confirm
+  exportLaporanGamasDM(ALL_DATA);
+});
 
 
 //====== EXPORT K EXCEL 
@@ -1569,7 +1787,6 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
   });
 
 // ========== BUAT TEKS RESUME ==========
-// ========== BUAT TEKS RESUME ==========
 let text = "Resume CRA\n";
 text += "[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
 
@@ -1638,4 +1855,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
   document.getElementById('btnExportTXT')?.addEventListener('click', exportCRAtoTXT);
 
-});   
+});
