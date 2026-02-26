@@ -52,6 +52,7 @@
 
 </div>
 
+
 <!-- ================= FILTER ================= -->
 <div id="statusFilterBox" class="status-filter"></div>
 
@@ -83,6 +84,86 @@
 </div>
 
 
+
+<!-- GAMAS CONVERTER - LEBAR FULL -->
+<div style="margin: 40px 0 60px 0; width: 100%;">
+    <!-- Judul -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="font-size: 42px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;">
+            📱  CONVERTER GAMAS TIDAK STANDART 
+        </h1>
+        <div style="width: 100px; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); margin: 15px auto; border-radius: 2px;"></div>
+    </div>
+
+    <!-- Container LEBAR (beda sama yang lain) -->
+    <div style="background: white; border-radius: 20px; padding: 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; width: 100%; max-width: 1200px; margin: 0 auto; box-sizing: border-box;">
+        
+        <!-- Deskripsi -->
+        <p style="color: #666; margin-bottom: 25px; font-size: 16px; text-align: center;">
+            ✨ Copy paste data GAMAS dari Telegram — <strong>otomatis terformat 1 baris!</strong>
+        </p>
+        
+        <!-- Textarea Input (lebih lebar) -->
+        <div style="position: relative; margin-bottom: 25px;">
+            <textarea 
+                id="telegramData" 
+                rows="6" 
+                oninput="autoConvertGamas()"
+                placeholder="Contoh: 
+/open_gamas_distribusi
+Nama / NIK pelapor : 720178 / PRASADJA
+Witel : KEDIRI
+..."
+                style="width: 100%; 
+                       padding: 20px; 
+                       border: 2px solid #e0e0e0; 
+                       border-radius: 15px; 
+                       font-family: 'Courier New', monospace; 
+                       font-size: 14px;
+                       line-height: 1.6;
+                       resize: vertical;
+                       transition: all 0.3s;
+                       box-sizing: border-box;
+                       background: #fafafa;"
+            ></textarea>
+            
+            <!-- Status Badge -->
+            <div style="position: absolute; top: 15px; right: 15px; background: white; padding: 5px 20px; border-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <span id="statusIndicator" style="font-size: 13px; font-weight: 600; color: #666;">
+                    ⏳ Menunggu input...
+                </span>
+            </div>
+        </div>
+        
+        <!-- Buttons -->
+        <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center;">
+            <button onclick="clearInput()" style="padding: 12px 35px; background: #f44336; color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span>🗑️</span> Clear
+            </button>
+            <button onclick="copyResult()" style="padding: 12px 35px; background: #4CAF50; color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span>📋</span> Copy Hasil
+            </button>
+        </div>
+        
+        <!-- HASIL - 1 BARIS BESAR -->
+        <div style="background: #f0f7ff; border-radius: 15px; padding: 20px; border: 2px solid #2196F3;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <span style="background: #2196F3; color: white; padding: 5px 15px; border-radius: 30px; font-size: 13px; font-weight: 600;">📋 HASIL SIAP COPY</span>
+            </div>
+            <div id="telegramResult" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: white; padding: 20px; border-radius: 10px; white-space: pre-wrap; word-break: break-word; border: 1px solid #ccc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                ✨ Hasil format 1 baris akan muncul di sini...
+            </div>
+        </div>
+        
+        <!-- Tips -->
+        <div style="margin-top: 20px; padding: 12px 20px; background: #e8f5e9; border-radius: 50px; font-size: 13px; color: #2e7d32; display: inline-block; width: auto;">
+            💡 Paste data, langsung jadi 1 baris siap copy!
+        </div>
+    </div>
+</div>
+
+<!-- SPACING: Kasih jarak sebelum Eskalasi -->
+<div style="height: 10px;"></div>
 <!-- ================= CONVERTER ESKALASI ================= -->
 <section class="section" id="eskalasi">
   <div class="page-title">
