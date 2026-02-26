@@ -874,3 +874,49 @@ body.light .cra-status option {
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, var(--accent-secondary), var(--accent-tertiary));
 }
+
+/* ========== TAMBAHAN UNTUK GAMAS TIDAK STANDART ======== */
+  /* Dark mode support */
+    .dark-mode .telegram-converter h1 {
+        background: linear-gradient(135deg, #a0a0ff 0%, #b19cd9 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .dark-mode .telegram-converter h2 {
+        color: #ff9999;
+    }
+    
+    .dark-mode .telegram-converter > div {
+        background: #2d2d2d;
+        border-color: #404040;
+    }
+    
+    .dark-mode #telegramData {
+        background: #333;
+        color: #fff;
+        border-color: #555;
+    }
+    
+    .dark-mode #telegramData:focus {
+        border-color: #667eea;
+    }
+    
+    .dark-mode #extractedPreview {
+        background: #1e3a5f;
+    }
+    
+    .dark-mode #extractedPreview span:last-child {
+        color: #fff;
+    }
+    
+    .dark-mode #telegramResult {
+        background: #2d2d2d;
+        color: #e0e0e0;
+        border-color: #404040;
+    }
+    
+    .dark-mode .telegram-converter > div > div:last-child {
+        background: #332e1f;
+        color: #ffb74d;
+    }
