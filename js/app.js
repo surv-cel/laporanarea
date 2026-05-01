@@ -22,6 +22,28 @@ window.CRA_RESULT = [];
 
 let currentData = []; // Data setelah filter + search
 
+// ================= FUNGSI KONVERSI DURASI =================
+// Fungsi konversi format HH:MM:SS ke "X Jam Y Menit"
+function formatDurasi(ttrEndToEnd) {
+    if (!ttrEndToEnd || ttrEndToEnd === '' || ttrEndToEnd === '00:00:00') return '-';
+    
+    const parts = ttrEndToEnd.split(':');
+    if (parts.length === 3) {
+        const jam = parseInt(parts[0]);
+        const menit = parseInt(parts[1]);
+        // Detik diabaikan sesuai permintaan
+        if (jam > 0 && menit > 0) {
+            return `${jam} Jam ${menit} Menit`;
+        } else if (jam > 0) {
+            return `${jam} Jam`;
+        } else if (menit > 0) {
+            return `${menit} Menit`;
+        }
+        return `${jam} Jam ${menit} Menit`;
+    }
+    return ttrEndToEnd;
+}
+
 async function loadWorkzones() {
   const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
   try {
@@ -301,6 +323,9 @@ function renderData(data) {
     const summary = row["SUMMARY"] || "";
     const update = row["WORKLOG SUMMARY"] || "-";
     const zone = (row["WORKZONE"] || "").toUpperCase();
+    const ttr = row["TTR END TO END"] || "";
+    const durasiFormatted = formatDurasi(ttr);
+    
     total++; 
 
     if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) {
@@ -321,10 +346,10 @@ function renderData(data) {
     card.className = "card";
 
     if (DB_JATIM.has(zone)) {
-      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
+      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
       jatimBox.appendChild(card);
     } else if (DB_BALNUS.has(zone)) {
-      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}`;
+      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
       balnusBox.appendChild(card);
     }
   });
