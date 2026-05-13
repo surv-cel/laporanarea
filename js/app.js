@@ -21,6 +21,594 @@ window.CRA_RESULT = [];
 
 let currentData = [];
 
+// ================= DATA STATIS UNTUK EXECUTIVE REPORT =================
+const STATIC_REPORT_DATA = {
+    cme: {
+        headers: ["Sub District", "jmlSTO", "jmlLap", "OK", "NOK", "%Lap", "%OK"],
+        rows: [
+            ["DPS", 11, 11, 11, 0, 100, 100],
+            ["JER", 30, 30, 30, 0, 100, 100],
+            ["KD", 28, 28, 28, 0, 100, 100],
+            ["ML", 24, 24, 24, 0, 100, 100],
+            ["MN", 31, 31, 31, 0, 100, 100],
+            ["MDR", 23, 23, 23, 0, 100, 100],
+            ["NTB", 15, 15, 15, 0, 100, 100],
+            ["NTT", 25, 25, 25, 0, 100, 100],
+            ["PSN", 19, 19, 19, 0, 100, 100],
+            ["SDA", 22, 22, 22, 0, 100, 100],
+            ["SGR", 18, 18, 18, 0, 100, 100],
+            ["SBS", 8, 8, 8, 0, 100, 100],
+            ["SBU", 23, 23, 23, 0, 100, 100],
+            ["TTL", 277, 277, 277, 0, 100, 100]
+        ]
+    },
+    utilisasi: {
+        tera: [
+            "KBL - JT2 BE5 | 86.9%",
+            "KBL - BTC BE15 | 59.2%",
+            "KBL - RKT BE9 | 90.6%",
+            "RKT - MTR BE29 | 78.2%",
+            "RKT - KLM BE16 | 80.2%"
+        ],
+        lbcdn: [],
+        pewag: [],
+        gpongpon: "23 NODE"
+    },
+    banjir: {
+        districtCount: 13,
+        stoCount: 266,
+        terdampak: 0
+    },
+    peService: {
+        hsi: "Normal",
+        transit: "Normal",
+        vpn: "Normal"
+    },
+    osase: "Nihil",
+    internet: "All Witel Normal",
+    useetv: "All Witel Normal",
+    voice: "All Witel Normal",
+    gamasNetwork: "Nihil",
+    bencanaAlam: "Nihil",
+    eventPenting: "Nihil"
+};
+
+// ================= FUNGSI DETEKSI UNTUK EXECUTIVE REPORT =================
+function detectNEAkses(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("GAMAS | AKSES | GPON") || 
+               summary.includes("[SQM GAMAS] [GPON");
+    });
+}
+
+function detectIPBackbone(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("(REPAIR) IP AREA 3") || 
+               summary.includes("(RECOVERY) IP AREA 3");
+    });
+}
+
+function detectTransportBackbone(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("(REPAIR) TRA AREA 3") || 
+               summary.includes("(RECOVERY) TRA AREA 3");
+    });
+}
+
+function detectFeeder(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("FEEDER");
+    });
+}
+
+function detectDistribusi(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("DISTRIBUSI");
+    });
+}
+
+function detectODP(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("ODP");
+    });
+}
+
+// ================= UPDATE STATISTIK REGION =================
+function updateRegionStats(data) {
+    let jatimCount = 0;
+    let balnusCount = 0;
+    let reg4Count = 0;
+    
+    data.forEach(row => {
+        const summary = row["SUMMARY"] || "";
+        const zone = (row["WORKZONE"] || "").toUpperCase();
+        
+        // Prioritas REG 4 dari SUMMARY
+        if (summary.includes("GAMAS R4") || summary.toUpperCase().includes("GAMAS R4")) {
+            reg4Count++;
+        }
+        // Cek REG 4 dari WORKZONE
+        else if (DB_REG4.has(zone)) {
+            reg4Count++;
+        }
+        // Cek JATIM
+        else if (DB_JATIM.has(zone)) {
+            jatimCount++;
+        }
+        // Cek BALNUS
+        else if (DB_BALNUS.has(zone)) {
+            balnusCount++;
+        }
+    });
+    
+    document.getElementById("statJatim").textContent = jatimCount;
+    document.getElementById("statBalnus").textContent = balnusCount;
+    document.getElementById("statReg4").textContent = reg4Count;
+    
+    console.log(`📊 STATS - JATIM: ${jatimCount}, BALNUS: ${balnusCount}, REG4: ${reg4Count}`);
+}
+
+// ================= FORMAT TIKET UNTUK EXECUTIVE REPORT =================
+function formatExecutiveTiket(row, index, type) {
+    const incident = row["INCIDENT"] || "-";
+    const summary = row["SUMMARY"] || "";
+    const update = row["WORKLOG SUMMARY"] || "-";
+    const ttr = row["TTR END TO END"] || "";
+    const durasiFormatted = formatDurasi(ttr);
+    
+    let extraInfo = "";
+    if (type === "NE_AKSES") {
+        const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+        if (iboosterMatch) extraInfo = ` | ${iboosterMatch[1]}`;
+    }
+    
+    return `${index}. ${incident}\n${summary}${extraInfo}\nUpdate : ${update}\n⏱️ Durasi Downtime: ${durasiFormatted}\n\n`;
+}
+
+function formatExecutiveGamasRow(row, index, type) {
+    const incident = row["INCIDENT"] || "-";
+    const summary = row["SUMMARY"] || "";
+    const worklog = row["WORKLOG SUMMARY"] || "-";
+    const ttrEndToEnd = row["TTR END TO END"] || "00:00:00";
+    
+    const parts = summary.split('|').map(p => p.trim());
+    const sqmGamas = parts[0] || "[SQM GAMAS]";
+    const akses = parts[1] || "AKSES";
+    const jenis = parts[2] || "";
+    const tif = parts[3] || "TIF-3";
+    const reg5 = parts[4] || "REG-5";
+    const penyebab = parts[5] || "";
+    const perbaikan = parts[6] || "";
+    const lokasiJenis = parts[7] || "";
+    const lokasi = parts[8] || "";
+    const estimasi = parts[9] || "";
+    
+    const odcMatch = summary.match(/\[(ODC[^\]]+)\]/);
+    const odcList = odcMatch ? odcMatch[1] : "";
+    const odpMatches = summary.match(/\[(ODP[^\]]+)\]/g);
+    const odpList = odpMatches && odpMatches.length > 0 ? odpMatches[0] : "";
+    const picMatch = summary.match(/\(PIC ([^)]+)\)/);
+    const pic = picMatch ? picMatch[1] : "";
+    const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+    const ibooster = iboosterMatch ? iboosterMatch[1] : "";
+    
+    let durationFormatted = ttrEndToEnd;
+    if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
+        const timeParts = ttrEndToEnd.split(':');
+        if (timeParts.length === 3) {
+            const hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
+            if (hours > 0 && minutes > 0) durationFormatted = `${hours} jam ${minutes} Menit`;
+            else if (hours > 0) durationFormatted = `${hours} jam`;
+            else if (minutes > 0) durationFormatted = `${minutes} Menit`;
+            else durationFormatted = `${timeParts[2]} Detik`;
+        }
+    }
+    
+    let result = `${index}. ${incident} | ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi})`;
+    if (odcList) result += ` | [${odcList}]`;
+    if (odpList) result += ` | Datek ODP Terdampak : [${odpList}]`;
+    if (pic) result += ` | (PIC ${pic})`;
+    if (ibooster) result += ` | ${ibooster}`;
+    
+    result += `\nUpdate : ${worklog}\n⏱️ Durasi Downtime : ${durationFormatted}\n\n`;
+    
+    return result;
+}
+
+// ================= GENERATE EXECUTIVE REPORT =================
+let currentExecutiveReport = "";
+
+function generateExecutiveReport(shift) {
+    if (!ALL_DATA.length) {
+        alert("Silahkan upload file CSV terlebih dahulu!");
+        return;
+    }
+    
+    const now = new Date();
+    const hari = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const jam = shift === 'PAGI' ? '09.00 WIB' : '21.00 WIB';
+    
+    const neAkses = detectNEAkses(ALL_DATA);
+    const ipBackbone = detectIPBackbone(ALL_DATA);
+    const transportBackbone = detectTransportBackbone(ALL_DATA);
+    const feeder = detectFeeder(ALL_DATA);
+    const distribusi = detectDistribusi(ALL_DATA);
+    const odp = detectODP(ALL_DATA);
+    
+    const ipCount = ipBackbone.length;
+    const transportCount = transportBackbone.length;
+    const neCount = neAkses.length;
+    const feederCount = feeder.length;
+    const distribusiCount = distribusi.length;
+    const odpCount = odp.length;
+    
+    let ipText = "Nihil";
+    if (ipCount > 0) {
+        ipText = `${ipCount} Tiket\n`;
+        ipBackbone.forEach((row, idx) => {
+            ipText += `${idx + 1}. ${row["INCIDENT"] || '-'}\n   ${row["SUMMARY"] || ''}\n   Update : ${row["WORKLOG SUMMARY"] || '-'}\n   ⏱️ Durasi : ${formatDurasi(row["TTR END TO END"] || '')}\n\n`;
+        });
+    }
+    
+    let transportText = "Nihil";
+    if (transportCount > 0) {
+        transportText = `${transportCount} Tiket\n`;
+        transportBackbone.forEach((row, idx) => {
+            transportText += `${idx + 1}. ${row["INCIDENT"] || '-'}\n   ${row["SUMMARY"] || ''}\n   Update : ${row["WORKLOG SUMMARY"] || '-'}\n   ⏱️ Durasi : ${formatDurasi(row["TTR END TO END"] || '')}\n\n`;
+        });
+    }
+    
+    let neText = "Nihil";
+    if (neCount > 0) {
+        neText = `${neCount} Tiket\n`;
+        neAkses.forEach((row, idx) => {
+            neText += formatExecutiveTiket(row, idx + 1, "NE_AKSES");
+        });
+    }
+    
+    let feederText = "Nihil";
+    if (feederCount > 0) {
+        feederText = `${feederCount} Tiket\n`;
+        feeder.forEach((row, idx) => {
+            feederText += formatExecutiveGamasRow(row, idx + 1, "FEEDER");
+        });
+    }
+    
+    let distribusiText = "Nihil";
+    if (distribusiCount > 0) {
+        distribusiText = `${distribusiCount} Tiket\n`;
+        distribusi.forEach((row, idx) => {
+            distribusiText += formatExecutiveGamasRow(row, idx + 1, "DISTRIBUSI");
+        });
+    }
+    
+    let odpText = "Nihil";
+    if (odpCount > 0) {
+        odpText = `${odpCount} Tiket\n`;
+        odp.forEach((row, idx) => {
+            odpText += formatExecutiveGamasRow(row, idx + 1, "ODP");
+        });
+    }
+    
+    let cmeTable = "Sub District|jmlSTO|jmlLap|OK|NOK|%Lap|%OK\n";
+    cmeTable += "-----------|------|------|--|---|----|---\n";
+    STATIC_REPORT_DATA.cme.rows.forEach(row => {
+        cmeTable += `${row[0]}|${row[1]} |${row[2]} |${row[3]} |${row[4]}|${row[5]}|${row[6]}\n`;
+    });
+    cmeTable += "\n* test beban dilaksanakan mingguan pada hari Jumat pukul 10.00 waktu setempat\n";
+    cmeTable += "* BBM OK jika stock untuk running genset >12 jam";
+    
+    let utilisasiText = "";
+    if (STATIC_REPORT_DATA.utilisasi.tera.length > 0) {
+        utilisasiText += "Tera > 50% :\n";
+        STATIC_REPORT_DATA.utilisasi.tera.forEach(item => {
+            utilisasiText += `${item}\n`;
+        });
+    }
+    if (STATIC_REPORT_DATA.utilisasi.gpongpon) {
+        utilisasiText += `\nUplink GPON to GPON >80% : ${STATIC_REPORT_DATA.utilisasi.gpongpon}\n`;
+    }
+    if (utilisasiText === "") utilisasiText = "-\n";
+    
+    // ================= CRA RESUME =================
+    let craResumeText = "";
+    let craTotal = 0;
+    
+    const districtList = [
+        "SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN",
+        "DENPASAR", "FLORES", "KUPANG", "MATARAM", "PEKALONGAN", "YOGYAKARTA",
+        "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"
+    ];
+    
+    let resume = {};
+    districtList.forEach(district => {
+        resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    });
+    resume["UNMAPPED"] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    
+    // ================= MAPPING LENGKAP =================
+    const manualMapping = {
+        // SURABAYA
+        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+        "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+        "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+        "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+        // MALANG
+        "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG", "TULUNGAGUNG": "MALANG",
+        // SIDOARJO
+        "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO", "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+        // JEMBER
+        "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER", "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER", "PROBOLINGGO": "JEMBER",
+        // MADIUN
+        "MDN": "MADIUN", "MADIUN": "MADIUN", "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN", "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN", "TRENGGALEK": "MADIUN",
+        // LAMONGAN
+        "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN", "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+        // DENPASAR
+        "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR", "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR", "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR", "SINGARAJA": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR", "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR",
+        // FLORES
+        "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES", "LARANTUKA": "FLORES", "LABUAN BAJO": "FLORES", "RUTENG": "FLORES", "BAJAWA": "FLORES",
+        // KUPANG
+        "KUPANG": "KUPANG", "TIMOR": "KUPANG", "SUMBA": "KUPANG", "ROTE": "KUPANG", "ATAMBUA": "KUPANG", "KEFAMENANU": "KUPANG", "SOE": "KUPANG", "WAIKABUBAK": "KUPANG", "WAINGAPU": "KUPANG", "NTT": "KUPANG",
+        // MATARAM
+        "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM", "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
+        // PEKALONGAN
+        "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN", "ADIWRENA": "PEKALONGAN", "BOBOTSARI": "PEKALONGAN", "BANDAR SEDAYU": "PEKALONGAN", "BULAKAMBA": "PEKALONGAN", "BALAPULANG": "PEKALONGAN", "BUMIAYU": "PEKALONGAN", "BREBES": "PEKALONGAN", "BATANG": "PEKALONGAN", "COMAL": "PEKALONGAN", "KEDUNGWUNI": "PEKALONGAN", "KAJEN": "PEKALONGAN", "KETANGGUNGAN TIMUR": "PEKALONGAN", "MARGADANA": "PEKALONGAN", "PURBALINGGA": "PEKALONGAN", "PEMALANG": "PEKALONGAN", "RANDUDONGKAL": "PEKALONGAN", "SUBAH": "PEKALONGAN", "SLAWI": "PEKALONGAN", "TEGAL": "PEKALONGAN", "TANJUNG TEGAL": "PEKALONGAN",
+        // YOGYAKARTA
+        "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA", "BABARSARI": "YOGYAKARTA", "BANTUL": "YOGYAKARTA", "GODEAN": "YOGYAKARTA", "YOKYAKARTA KOTABARU": "YOGYAKARTA", "YOGYAKARTA KENTUNGAN": "YOGYAKARTA", "KOTA GEDE": "YOGYAKARTA", "KALASAN": "YOGYAKARTA", "PUGERAN": "YOGYAKARTA", "PAKEM KALIURANG": "YOGYAKARTA", "SLEMAN": "YOGYAKARTA", "WONOSARI": "YOGYAKARTA", "WATES": "YOGYAKARTA",
+        // PURWOKERTO
+        "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO", "AJIBARANG": "PURWOKERTO", "BANJARNEGARA": "PURWOKERTO", "BATURADEN": "PURWOKERTO", "CILACAP": "PURWOKERTO", "CILONGOK": "PURWOKERTO", "GUMILIR": "PURWOKERTO", "KLAMPOK": "PURWOKERTO", "KROYA": "PURWOKERTO", "MAJENANG": "PURWOKERTO", "MAOS": "PURWOKERTO", "SIDAREJA": "PURWOKERTO", "SUKARAJA": "PURWOKERTO", "WONOSOBO": "PURWOKERTO",
+        // MAGELANG
+        "MAGELANG": "MAGELANG", "GOMBONG": "MAGELANG", "KARANGANYAR KEBUMEN": "MAGELANG", "KEBUMEN": "MAGELANG", "KUTOARJO": "MAGELANG", "KUTOWINANGUN": "MAGELANG", "MUNGKID": "MAGELANG", "MERTOYUDAN": "MAGELANG", "MUNTILAN": "MAGELANG", "PARAKAN": "MAGELANG", "PURWOREJO": "MAGELANG", "TEMANGGUNG": "MAGELANG",
+        // SEMARANG
+        "SMR": "SEMARANG", "SEMARANG": "SEMARANG", "JATENG": "SEMARANG", "AMBARAWA": "SEMARANG", "BANGSRI": "SEMARANG", "BANDUNGAN": "SEMARANG", "SEMARANG BANYUMANIK": "SEMARANG", "BOJA": "SEMARANG", "BAWEN": "SEMARANG", "DEMAK": "SEMARANG", "GOMBEL": "SEMARANG", "SEMARANG GENUK": "SEMARANG", "SEMARANG JOHAR": "SEMARANG", "JEPARA": "SEMARANG", "JUWANA": "SEMARANG", "KENDAL": "SEMARANG", "KELING": "SEMARANG", "KARIMUNJAWA": "SEMARANG", "KUDUS": "SEMARANG", "LASEM": "SEMARANG", "MIJEN": "SEMARANG", "SEMARANG MAJAPAHIT": "SEMARANG", "SEMARANG MANGKANG": "SEMARANG", "PATI": "SEMARANG", "PECANGAAN": "SEMARANG", "REMBANG": "SEMARANG", "SUKOREJO": "SEMARANG", "SALATIGA": "SEMARANG", "SEMARANG CANDI": "SEMARANG", "SEMARANG TUGU": "SEMARANG", "SEMARANG SIMPANGLIMA": "SEMARANG", "TAYU": "SEMARANG", "UNGARAN": "SEMARANG", "WELERI": "SEMARANG", "WONOREJO": "SEMARANG",
+        // SURAKARTA
+        "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA", "SOLO BEKONANG": "SURAKARTA", "BLORA": "SURAKARTA", "BATURETNO": "SURAKARTA", "BOYOLALI": "SURAKARTA", "CEPU": "SURAKARTA", "DELANGGU": "SURAKARTA", "GUBUG": "SURAKARTA", "GODONG": "SURAKARTA", "SOLO GLADAK": "SURAKARTA", "JATISRONO": "SURAKARTA", "KARANG ANYAR SOLO": "SURAKARTA", "KLATEN": "SURAKARTA", "SOLO KERTEN": "SURAKARTA", "KARTOSURO": "SURAKARTA", "SOLO MOJOSONGO": "SURAKARTA", "NGAWEN": "SURAKARTA", "PEDAN": "SURAKARTA", "PURWODADI GROBOGAN": "SURAKARTA", "RANDUBLATUNG": "SURAKARTA", "SUKOHARJO": "SURAKARTA", "SOLO BARU": "SURAKARTA", "SOLO PALUR": "SURAKARTA", "SRAGEN": "SURAKARTA", "TOROH": "SURAKARTA", "TAWANGMANGU": "SURAKARTA", "WONOGIRI": "SURAKARTA", "WIROSARI": "SURAKARTA"
+    };
+    
+    console.log("========== DEBUG CRA RESULT ==========");
+    console.log("Total CRA_RESULT:", CRA_RESULT ? CRA_RESULT.length : 0);
+    
+    if (CRA_RESULT && CRA_RESULT.length > 0) {
+        CRA_RESULT.forEach((row, idx) => {
+            let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
+            let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim();
+            let district = "UNMAPPED";
+            let originalWitel = witel;
+            
+            if (manualMapping[witel]) {
+                district = manualMapping[witel];
+            } else {
+                const words = witel.split(/[\s\/,-]+/);
+                for (let word of words) {
+                    if (word.length >= 2 && manualMapping[word]) {
+                        district = manualMapping[word];
+                        break;
+                    }
+                }
+            }
+            
+            if (district === "UNMAPPED") {
+                if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR") || witel.includes("SINGARAJA")) {
+                    district = "DENPASAR";
+                } else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) {
+                    district = "FLORES";
+                } else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) {
+                    district = "KUPANG";
+                } else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) {
+                    district = "MATARAM";
+                } else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) {
+                    district = "LAMONGAN";
+                } else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) {
+                    district = "MADIUN";
+                } else if (witel.includes("PEKALONGAN") || witel.includes("PKL") || witel.includes("TEGAL") || witel.includes("CIREBON")) {
+                    district = "PEKALONGAN";
+                } else if (witel.includes("YOGYAKARTA") || witel.includes("JOGJA") || witel.includes("DIY")) {
+                    district = "YOGYAKARTA";
+                } else if (witel.includes("PURWOKERTO") || witel.includes("PWT") || witel.includes("BANYUMAS")) {
+                    district = "PURWOKERTO";
+                } else if (witel.includes("MAGELANG")) {
+                    district = "MAGELANG";
+                } else if (witel.includes("SEMARANG") || witel.includes("SMR") || witel.includes("JATENG")) {
+                    district = "SEMARANG";
+                } else if (witel.includes("SURAKARTA") || witel.includes("SOLO")) {
+                    district = "SURAKARTA";
+                }
+            }
+            
+            if (district === "UNMAPPED") {
+                console.log(`🔴 UNMAPPED #${idx+1}: Witel="${originalWitel}" | NoCRA="${row.noCRA}" | Status="${row.status}"`);
+            } else {
+                console.log(`🟢 MAPPED #${idx+1}: Witel="${originalWitel}" -> District="${district}"`);
+            }
+            
+            if (!resume[district]) {
+                resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
+            }
+            
+            resume[district].total++;
+            craTotal++;
+            
+            const status = (row.status || "BELUM DIISI").toUpperCase();
+            if (status === "ON SCHEDULE") {
+                resume[district].on++;
+            } else if (status === "CANCEL") {
+                resume[district].cancel++;
+            } else {
+                resume[district].belum++;
+            }
+        });
+    }
+    
+    console.log("========== RESUME SUMMARY ==========");
+    for (let key in resume) {
+        if (resume[key].total > 0) {
+            console.log(`District ${key}: total=${resume[key].total}, on=${resume[key].on}, belum=${resume[key].belum}, cancel=${resume[key].cancel}`);
+        }
+    }
+    
+    if (craTotal > 0) {
+        craResumeText = `Resume CRA\n[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n`;
+        let idx = 1;
+        
+        for (let district of districtList) {
+            let d = resume[district];
+            craResumeText += `${idx}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
+            idx++;
+        }
+        
+        let dUnmapped = resume["UNMAPPED"];
+        craResumeText += `${idx}. District UNMAPPED : [ ${dUnmapped.total} | ${dUnmapped.on} | ${dUnmapped.belum} | ${dUnmapped.cancel} ]\n`;
+        
+        let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
+        for (let key in resume) {
+            totalAll += resume[key].total;
+            totalOn += resume[key].on;
+            totalBelum += resume[key].belum;
+            totalCancel += resume[key].cancel;
+        }
+        
+        craResumeText += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]\n`;
+        craResumeText += `\nKeterangan :\nBelum = PIC Drafter belum checklist GDOC TIOC\nNOK/Cancel = PIC Drafter sudah menyelesaikan CRA sebelumnya`;
+    } else {
+        craResumeText = "Tidak ada data CRA";
+    }
+    
+    const report = `EXECUTIVE REPORT
+EVP Area III Bpk Deddy Suhendry
+Kami laporkan kondisi layanan dan lainnya di TIF3-JBN sebagai berikut :
+${hari}
+Pukul : ${jam}
+  
+I. EXECUTIVE SUMMARY
+A. Secara umum, Infrastructure dan Service berfungsi secara normal.
+B. GANGGUAN INFRASTRUKTUR :
+1. IP Backbone : ${ipCount === 0 ? "Nihil" : ipCount + " Tiket"}
+2. Transport Backbone : ${transportCount === 0 ? "Nihil" : transportCount + " Tiket"}
+
+C. KEJADIAN/KEGIATAN PENTING :
+1. Bencana Alam : ${STATIC_REPORT_DATA.bencanaAlam}
+2. Event Penting : ${STATIC_REPORT_DATA.eventPenting}
+
+II. INFRASTRUCTURE
+A. IP Backbone : ${ipText}
+B. TRANSPORT BACKBONE : ${transportText}
+C. OSASE : ${STATIC_REPORT_DATA.osase}
+D. REPORT CME : 
+
+${cmeTable}
+
+E. NE AKSES : ${neText}
+
+F. GAMAS FEEDER, DISTRIBUSI, ODP : 
+- FEEDER : ${feederText}
+- DISTRIBUSI : ${distribusiText}
+- ODP : ${odpText}
+
+G. PE SERVICE :
+-  PE HSI     : ${STATIC_REPORT_DATA.peService.hsi}
+-  PE TRANSIT : ${STATIC_REPORT_DATA.peService.transit}
+-  PE VPN     : ${STATIC_REPORT_DATA.peService.vpn}
+
+H. Gamas Network : ${STATIC_REPORT_DATA.gamasNetwork}
+I. UTILISASI
+${utilisasiText}
+
+III. STATUS SERVICE
+A. INTERNET : ${STATIC_REPORT_DATA.internet}
+B. USEETV : ${STATIC_REPORT_DATA.useetv}
+C. VOICE : ${STATIC_REPORT_DATA.voice}
+
+IV. SIAGA BANJIR (Kondisi STO Terdampak Banjir)
+TReg5 : ${STATIC_REPORT_DATA.banjir.districtCount} District | ${STATIC_REPORT_DATA.banjir.stoCount} STO | ${STATIC_REPORT_DATA.banjir.terdampak} STO Terdampak Banjir
+  
+V. KEGIATAN TERENCANA (CRA) : ${craTotal} KEGIATAN
+
+${craResumeText}
+
+REPORT INTERNAL TELKOM DILARANG DISEBARLUASKAN KE LUAR TELKOM
+
+Contact Center:
+Free Call : 0800-1-353000
+TSEL : 0811-3081-500`;
+
+    currentExecutiveReport = report;
+    
+    const reportContent = document.getElementById('executiveReportContent');
+    if (reportContent) {
+        reportContent.textContent = report;
+    }
+}
+
+// ================= COPY EXECUTIVE REPORT =================
+function copyExecutiveReport() {
+    if (!currentExecutiveReport) {
+        alert("Belum ada laporan yang di-generate. Pilih shift terlebih dahulu!");
+        return;
+    }
+    
+    navigator.clipboard.writeText(currentExecutiveReport).then(() => {
+        alert("✅ Executive Report berhasil di-copy!");
+    }).catch(() => {
+        alert("❌ Gagal menyalin report");
+    });
+}
+
+// ================= DOWNLOAD EXECUTIVE REPORT =================
+function downloadExecutiveReport() {
+    if (!currentExecutiveReport) {
+        alert("Belum ada laporan yang di-generate. Pilih shift terlebih dahulu!");
+        return;
+    }
+    
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+    const blob = new Blob([currentExecutiveReport], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EXECUTIVE_REPORT_${timestamp}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+document.getElementById("executiveReportBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("executiveModal");
+    if (modal) {
+        modal.style.display = "flex";
+        
+        // SCROLL HALAMAN KE POSISI MODAL
+        modal.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+        
+        const reportContent = document.getElementById('executiveReportContent');
+        if (reportContent) {
+            reportContent.textContent = "Pilih shift laporan di atas untuk menghasilkan Executive Report...";
+        }
+        currentExecutiveReport = "";
+    }
+});
+
+document.getElementById("closeExecutiveModal")?.addEventListener("click", () => {
+    const modal = document.getElementById("executiveModal");
+    if (modal) modal.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+    const modal = document.getElementById("executiveModal");
+    if (e.target === modal) {
+        modal.style.display = "none";
+    }
+});
+
 // ================= FUNGSI KONVERSI DURASI =================
 function formatDurasi(ttrEndToEnd) {
     if (!ttrEndToEnd || ttrEndToEnd === '' || ttrEndToEnd === '00:00:00') return '-';
@@ -229,6 +817,9 @@ function parseCSV(text) {
 document.getElementById("fileInput")?.addEventListener("change", e => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    const fileNameSpan = document.getElementById("fileName");
+    if (fileNameSpan) fileNameSpan.textContent = file.name;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -252,7 +843,6 @@ function renderData(data) {
     let total = 0;
     let bb = 0, ip = 0;
     let d = 0, f = 0, g = 0;
-    let odc = 0, odp = 0;
     let noJ = 1, noB = 1, noReg4 = 1;
 
     data.forEach(row => {
@@ -269,8 +859,6 @@ function renderData(data) {
         if (summary.includes("DISTRIBUSI")) d++;
         if (summary.includes("FEEDER")) f++;
         if (summary.includes("GPON")) g++;
-        if (summary.includes("ODC")) odc++;
-        if (summary.includes("ODP")) odp++;
 
         const card = document.createElement("div");
         card.className = "card";
@@ -299,6 +887,9 @@ function renderData(data) {
     document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
 
     renderStatusBadges(data);
+	
+	//JUMLAH GAMAS
+	updateRegionStats(data);
     
     if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
     if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
@@ -421,14 +1012,14 @@ function formatGamasRow(row, index) {
     
     let durationFormatted = ttrEndToEnd;
     if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
-        const parts = ttrEndToEnd.split(':');
-        if (parts.length === 3) {
-            const hours = parseInt(parts[0]);
-            const minutes = parseInt(parts[1]);
+        const timeParts = ttrEndToEnd.split(':');
+        if (timeParts.length === 3) {
+            const hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
             if (hours > 0 && minutes > 0) durationFormatted = `${hours} jam ${minutes} Menit`;
             else if (hours > 0) durationFormatted = `${hours} jam`;
             else if (minutes > 0) durationFormatted = `${minutes} Menit`;
-            else durationFormatted = `${parts[2]} Detik`;
+            else durationFormatted = `${timeParts[2]} Detik`;
         }
     }
     
@@ -501,25 +1092,6 @@ document.getElementById("exportExcel")?.addEventListener("click", () => {
     }
     exportLaporanGamasDM(ALL_DATA);
 });
-
-function exportJatimBalnusExcel(data) {
-    const headers = ["NO", "INCIDENT", "WORKZONE", "SUMMARY", "WORKLOGSUMMARY", "STATUS"];
-    const jatimZones = ["SDY","SBY","MLG","KDR","JBR","BWI","PBL","JBG"];
-    const balnusZones = ["BJM","BDJ","PKY","SMR","TAR","PTK","MTP"];
-    const isZone = (text, zones) => zones.some(z => text?.toUpperCase().includes(z));
-    const jatim = [], balnus = [];
-    
-    data.forEach((row) => {
-        const record = [jatim.length + 1, row.INCIDENT || "", row.WORKZONE || "", row.SUMMARY || "", row.WORKLOGSUMMARY || "", row.STATUS || ""];
-        if (isZone(row.WORKZONE, jatimZones)) jatim.push(record);
-        else if (isZone(row.WORKZONE, balnusZones)) balnus.push(record);
-    });
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...jatim]), "JATIM");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...balnus]), "BALNUS");
-    XLSX.writeFile(wb, "LAPORAN_GAMAS_JATIM_BALNUS.xlsx");
-}
 
 function renderStatusBadges(data) {
     const box = document.getElementById('statusBadges');
@@ -729,19 +1301,6 @@ TSEL : 0811-3081-500`.trim();
     document.getElementById('eskOutput').value = result;
 }
 
-function extractCC(raw) { 
-    const idx = raw.indexOf('CC :'); 
-    if (idx === -1) return '-'; 
-    let cc = raw.substring(idx + 4); 
-    cc = cc.split(/REPORT INTERNAL|Contact Center|Last update|Surveillance/i)[0]; 
-    return cc.replace(/\*/g, '').replace(/\s+/g, ' ').trim() || '-'; 
-}
-
-function getLastUpdate(raw) { 
-    const m = raw.match(/Last update\s*:\s*(.+)/i); 
-    return m ? `Last update : ${m[1].trim()}` : ''; 
-}
-
 function convertWhatsApp() {
     const rawFull = document.getElementById('eskInput').value;
     const raw = stripOldFooter(rawFull);
@@ -834,6 +1393,11 @@ function stripOldFooter(raw) {
 function formatWAFooter(raw) { 
     const rocName = extractROCName(raw) || '-'; 
     return `Surveillance ROC5 - ${rocName}\n\nEskalasi : HoD Bpk @\n\nCC : EVP Teritory III Bpk @ , SM ROC DAN SM RAM, GM TA, MGR TA, MGR FBB, MGR AODM, MGR OM RAM\n\n*REPORT INTERNAL TIDAK UNTUK DISEBARKAN KE PIHAK LUAR*\n\nContact Center:\nFree Call : 0800-1-353000\nTSEL : 0811-3081-500\n\n${getLastUpdate(raw)}`.trim(); 
+}
+
+function getLastUpdate(raw) { 
+    const m = raw.match(/Last update\s*:\s*(.+)/i); 
+    return m ? `Last update : ${m[1].trim()}` : ''; 
 }
 
 function copyEskalasi() { 
@@ -1179,7 +1743,49 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     resume["UNMAPPED"] = { total: 0, on: 0, belum: 0, cancel: 0 };
     
     const manualMapping = { 
-        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA", "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA", "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA", "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA", "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG", "TULUNGAGUNG": "MALANG", "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO", "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO", "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER", "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER", "PROBOLINGGO": "JEMBER", "MDN": "MADIUN", "MADIUN": "MADIUN", "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN", "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN", "TRENGGALEK": "MADIUN", "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN", "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN", "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR", "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR", "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR", "SINGARAJA": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR", "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR", "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES", "LARANTUKA": "FLORES", "LABUAN BAJO": "FLORES", "RUTENG": "FLORES", "BAJAWA": "FLORES", "KUPANG": "KUPANG", "TIMOR": "KUPANG", "SUMBA": "KUPANG", "ROTE": "KUPANG", "ATAMBUA": "KUPANG", "KEFAMENANU": "KUPANG", "SOE": "KUPANG", "WAIKABUBAK": "KUPANG", "WAINGAPU": "KUPANG", "NTT": "KUPANG", "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM", "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM", "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN", "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA", "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO", "MAGELANG": "MAGELANG", "SMR": "SEMARANG", "SEMARANG": "SEMARANG", "JATENG": "SEMARANG", "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA" 
+        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+        "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+        "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+        "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+        "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG",
+        "TULUNGAGUNG": "MALANG", "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO",
+        "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+        "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER",
+        "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER",
+        "PROBOLINGGO": "JEMBER", "MDN": "MADIUN", "MADIUN": "MADIUN",
+        "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN",
+        "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN",
+        "TRENGGALEK": "MADIUN", "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN",
+        "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+        "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR",
+        "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR",
+        "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR",
+        "SINGARAJA": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR",
+        "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR",
+        "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES",
+        "LARANTUKA": "FLORES", "LABUAN BAJO": "FLORES", "RUTENG": "FLORES",
+        "BAJAWA": "FLORES", "KUPANG": "KUPANG", "TIMOR": "KUPANG",
+        "SUMBA": "KUPANG", "ROTE": "KUPANG", "ATAMBUA": "KUPANG",
+        "KEFAMENANU": "KUPANG", "SOE": "KUPANG", "WAIKABUBAK": "KUPANG",
+        "WAINGAPU": "KUPANG", "NTT": "KUPANG", "MATARAM": "MATARAM",
+        "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM",
+        "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
+        "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN",
+        "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA",
+        "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO",
+        "MAGELANG": "MAGELANG", "SMR": "SEMARANG", "SEMARANG": "SEMARANG",
+        "JATENG": "SEMARANG", "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA",
+        // Tambahan mapping untuk SEMARANG (KUDUS dll)
+        "KUDUS": "SEMARANG", "GOMBONG": "MAGELANG", "KEBUMEN": "MAGELANG",
+        "PURWOREJO": "MAGELANG", "TEMANGGUNG": "MAGELANG", "TEGAL": "PEKALONGAN",
+        "SLAWI": "PEKALONGAN", "PEMALANG": "PEKALONGAN", "BATANG": "PEKALONGAN",
+        "BREBES": "PEKALONGAN", "CILACAP": "PURWOKERTO", "WONOSOBO": "PURWOKERTO",
+        "BANJARNEGARA": "PURWOKERTO", "DEMAK": "SEMARANG", "JEPARA": "SEMARANG",
+        "PATI": "SEMARANG", "REMBANG": "SEMARANG", "BLORA": "SURAKARTA",
+        "SRAGEN": "SURAKARTA", "WONOGIRI": "SURAKARTA", "KLATEN": "SURAKARTA",
+        "SUKOHARJO": "SURAKARTA", "BOYOLALI": "SURAKARTA", "SALATIGA": "SEMARANG",
+        "BANTUL": "YOGYAKARTA", "SLEMAN": "YOGYAKARTA", "KULON PROGO": "YOGYAKARTA",
+        "GUNUNGKIDUL": "YOGYAKARTA"
     };
     
     let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
@@ -1264,6 +1870,17 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     
     text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
     showResumeModal(text);
+	
+	// AUTO SCROLL KE MODAL RESUME CRA
+	setTimeout(() => {
+        const modal = document.getElementById("resumeModalNew");
+        if (modal) {
+            modal.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }, 100); // delay 100ms agar modal sempat ter-render
 });
 
 function showResumeModal(text) {
