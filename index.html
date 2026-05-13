@@ -5,6 +5,137 @@
   <title>Laporan GAMAS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* CSS tambahan untuk Executive Report Button dan Modal */
+    .executive-btn {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+    }
+    .executive-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(220,38,38,0.4);
+    }
+    .executive-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+    .executive-modal {
+      background: white;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 1000px;
+      max-height: 85vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .executive-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      color: white;
+    }
+    .executive-modal-header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+    .executive-modal-header button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+    }
+    .executive-shift-buttons {
+      padding: 16px 24px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      gap: 12px;
+    }
+    .shift-btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .shift-pagi {
+      background: #f59e0b;
+      color: white;
+    }
+    .shift-malam {
+      background: #3b82f6;
+      color: white;
+    }
+    .shift-btn:hover {
+      transform: scale(1.02);
+      opacity: 0.9;
+    }
+    .executive-modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .executive-report-content {
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .executive-modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    .executive-modal-footer button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .copy-executive {
+      background: #22c55e;
+      color: white;
+    }
+    .download-executive {
+      background: #3b82f6;
+      color: white;
+    }
+  </style>
 </head>
 <body class="light">
 
@@ -22,7 +153,19 @@
       </label>
       <span class="upload-filename" id="fileName">Belum ada file</span>
     </div>
+    <!-- TOMBOL EXECUTIVE REPORT BARU -->
+    <button id="executiveReportBtn" class="executive-btn">
+      📋 EXECUTIVE REPORT DM PAGI MALAM
+    </button>
   </div>
+  
+   <!-- TAMBAHKAN STATISTIK DISINI -->
+  <div class="stats-region">
+    <div class="stat-region jatim-stat">🇯🇵 JATIM : <span id="statJatim">0</span></div>
+    <div class="stat-region balnus-stat">🌴 BALNUS : <span id="statBalnus">0</span></div>
+    <div class="stat-region reg4-stat">📌 REG 4 : <span id="statReg4">0</span></div>
+  </div>
+</div>
 
   <div class="search-area">
     <input
@@ -52,20 +195,17 @@
 
 </div>
 
-
 <!-- ================= FILTER ================= -->
 <div id="statusFilterBox" class="status-filter"></div>
 
 <!-- ================= STATUS BADGE ================= -->
 <div id="statusBadges" class="status-badges"></div>
 
-
-<div class="export-area">
-  <button id="exportExcel" class="export-btn">
-    📥 Export Laporan Gamas DM 
-  </button>
-</div>
-
+<!-- <div class="export-area"> -->
+<!--  <button id="exportExcel" class="export-btn"> -->
+<!--    📥 Export Laporan Gamas DM  -->
+<!--  </button> -->
+<!-- </div> -->
 
 <div id="jatim" class="section">
   <div class="section-header">
@@ -92,11 +232,31 @@
   <div class="content"></div>
 </div>
 
-
+<!-- ================= MODAL EXECUTIVE REPORT ================= -->
+<div id="executiveModal" class="executive-modal-overlay">
+  <div class="executive-modal">
+    <div class="executive-modal-header">
+      <h2>📋 EXECUTIVE REPORT</h2>
+      <button id="closeExecutiveModal">&times;</button>
+    </div>
+    <div class="executive-shift-buttons">
+      <button class="shift-btn shift-pagi" onclick="generateExecutiveReport('PAGI')">🕘 Laporan Pagi (09.00 WIB)</button>
+      <button class="shift-btn shift-malam" onclick="generateExecutiveReport('MALAM')">🕘 Laporan Malam (21.00 WIB)</button>
+    </div>
+    <div class="executive-modal-body">
+      <div id="executiveReportContent" class="executive-report-content">
+        Pilih shift laporan di atas untuk menghasilkan Executive Report...
+      </div>
+    </div>
+    <div class="executive-modal-footer">
+      <button class="copy-executive" onclick="copyExecutiveReport()">📋 Copy</button>
+      <button class="download-executive" onclick="downloadExecutiveReport()">📥 Download TXT</button>
+    </div>
+  </div>
+</div>
 
 <!-- GAMAS CONVERTER - LEBAR FULL -->
 <div style="margin: 40px 0 60px 0; width: 100%;">
-    <!-- Judul -->
     <div style="text-align: center; margin-bottom: 30px;">
         <h1 style="font-size: 42px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;">
             📱  CONVERTER GAMAS TIDAK STANDART 
@@ -104,15 +264,12 @@
         <div style="width: 100px; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); margin: 15px auto; border-radius: 2px;"></div>
     </div>
 
-    <!-- Container LEBAR (beda sama yang lain) -->
     <div style="background: white; border-radius: 20px; padding: 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; width: 100%; max-width: 1200px; margin: 0 auto; box-sizing: border-box;">
         
-        <!-- Deskripsi -->
         <p style="color: #666; margin-bottom: 25px; font-size: 16px; text-align: center;">
             ✨ Copy paste data GAMAS dari Telegram — <strong>otomatis terformat 1 baris!</strong>
         </p>
         
-        <!-- Textarea Input (lebih lebar) -->
         <div style="position: relative; margin-bottom: 25px;">
             <textarea 
                 id="telegramData" 
@@ -136,7 +293,6 @@ Witel : KEDIRI
                        background: #fafafa;"
             ></textarea>
             
-            <!-- Status Badge -->
             <div style="position: absolute; top: 15px; right: 15px; background: white; padding: 5px 20px; border-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <span id="statusIndicator" style="font-size: 13px; font-weight: 600; color: #666;">
                     ⏳ Menunggu input...
@@ -144,7 +300,6 @@ Witel : KEDIRI
             </div>
         </div>
         
-        <!-- Buttons -->
         <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center;">
             <button onclick="clearInput()" style="padding: 12px 35px; background: #f44336; color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <span>🗑️</span> Clear
@@ -154,7 +309,6 @@ Witel : KEDIRI
             </button>
         </div>
         
-        <!-- HASIL - 1 BARIS BESAR -->
         <div style="background: #f0f7ff; border-radius: 15px; padding: 20px; border: 2px solid #2196F3;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                 <span style="background: #2196F3; color: white; padding: 5px 15px; border-radius: 30px; font-size: 13px; font-weight: 600;">📋 HASIL SIAP COPY</span>
@@ -164,16 +318,13 @@ Witel : KEDIRI
             </div>
         </div>
         
-        <!-- Tips -->
         <div style="margin-top: 20px; padding: 12px 20px; background: #e8f5e9; border-radius: 50px; font-size: 13px; color: #2e7d32; display: inline-block; width: auto;">
             💡 Paste data, langsung jadi 1 baris siap copy!
         </div>
     </div>
 </div>
 
-<!-- SPACING: Kasih jarak sebelum Eskalasi -->
 <div style="height: 10px;"></div>
-
 
 <!-- ========== SECTION MONITOR TERA > 50% ========== -->
 <div class="monitor-section" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
@@ -192,7 +343,6 @@ Witel : KEDIRI
         </div>
     </div>
 
-    <!-- Stats Cards -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
             <div style="font-size: 12px; opacity: 0.9;">Total Link</div>
@@ -212,7 +362,6 @@ Witel : KEDIRI
         </div>
     </div>
 
-    <!-- List View -->
     <div id="teraListContainer" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 8px; padding: 10px;">
         <div style="text-align: center; padding: 40px; color: #999;">
             ⏳ Memuat data...
@@ -226,38 +375,29 @@ Witel : KEDIRI
 </div>
 <div style="height: 10px;"></div>
 
-
 <!-- ================= CONVERTER ESKALASI ================= -->
 <section class="section" id="eskalasi">
   <div class="page-title">
     <h2>🔁 CONVERTER ESKALASI</h2>
   </div>
 
-	  <div class="esk-grid">
-
-	  <!-- DATA A (SUDAH ADA) -->
-	  <div class="esk-box">
-		<h3>DATA A</h3>
-		<textarea id="eskInput"></textarea>
-	  </div>
-
-	  <!-- TELEGRAM (SEBELUMNYA DATA B) -->
-	  <div class="esk-box">
-		<h3>TELEGRAM</h3>
-		<textarea id="eskOutput"></textarea>
-		<button onclick="copyEskalasi()">Copy</button>
-	  </div>
-
-	  <!-- WHATSAPP (BARU) -->
-	  <div class="esk-box">
-		<h3>WHATSAPP</h3>
-		<textarea id="eskOutputWA"></textarea>
-		<button onclick="copyWA()">Copy</button>
-	  </div>
-		</div>
-   </section>
-
-   
+  <div class="esk-grid">
+    <div class="esk-box">
+      <h3>DATA A</h3>
+      <textarea id="eskInput"></textarea>
+    </div>
+    <div class="esk-box">
+      <h3>TELEGRAM</h3>
+      <textarea id="eskOutput"></textarea>
+      <button onclick="copyEskalasi()">Copy</button>
+    </div>
+    <div class="esk-box">
+      <h3>WHATSAPP</h3>
+      <textarea id="eskOutputWA"></textarea>
+      <button onclick="copyWA()">Copy</button>
+    </div>
+  </div>
+</section>
 
 <!-- ================= CRA ================= -->
 <section class="cra-section">
@@ -323,28 +463,22 @@ Witel : KEDIRI
   </div>
 </section>
 
-
-
-
 <footer class="app-footer">
   <div class="footer-center">
     <div class="footer-text">
       © 2026–2027 <strong>Soekma Properti</strong>
     </div>
-
     <div class="footer-icons">
       <a href="#" class="footer-icon wa" title="WhatsApp">
         <svg viewBox="0 0 24 24">
           <path d="M20.5 3.5A11.9 11.9 0 0012 0 12 12 0 002.2 18.3L0 24l5.9-2.1A12 12 0 1020.5 3.5z"/>
         </svg>
       </a>
-
       <a href="#" class="footer-icon ig" title="Instagram">
         <svg viewBox="0 0 24 24">
           <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 5.5A4.5 4.5 0 1016.5 12 4.5 4.5 0 0012 7.5z"/>
         </svg>
       </a>
-
       <a href="#" class="footer-icon x" title="X">
         <svg viewBox="0 0 24 24">
           <path d="M18.9 2H22l-7.1 8.1L23 22h-6.4l-5-6.3L6 22H3l7.6-8.7L1 2h6.6l4.5 5.7z"/>
@@ -353,12 +487,12 @@ Witel : KEDIRI
     </div>
   </div>
 </footer>
-   
+
 <div class="watermark">SOEKMA PROPERTI</div>
+
 <!-- SheetJS for Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/app.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 </body>
