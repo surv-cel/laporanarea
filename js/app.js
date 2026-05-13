@@ -346,10 +346,10 @@ function renderData(data) {
     card.className = "card";
 
     if (DB_JATIM.has(zone)) {
-      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi Downtime:</b> ${durasiFormatted}`;
+      card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
       jatimBox.appendChild(card);
     } else if (DB_BALNUS.has(zone)) {
-      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi Downtime:</b> ${durasiFormatted}`;
+      card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
       balnusBox.appendChild(card);
     }
   });
@@ -1204,32 +1204,61 @@ function renderCRA(data) {
   const tbody = document.querySelector('#craTable tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+  
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">Data CRA tidak ditemukan</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Data CRA tidak ditemukan<\/td><\/tr>`;
     return;
   }
+  
+  // Prioritaskan REG 5/ALL REG, tapi jangan double count
+  const processedKeys = new Set();  // 🔴 TAMBAHKAN INI
+  
+  const priorityData = data.filter(row => {
+    const reg = (row.regional || '').toUpperCase();
+    const key = row.noCRA;
+    if (reg.includes('REG 5') || reg.includes('ALL REG')) {
+      if (!processedKeys.has(key)) {
+        processedKeys.add(key);
+        return true;
+      }
+    }
+    return false;
+  });
+  
+  const reg4Data = data.filter(row => {
+    const reg = (row.regional || '').toUpperCase();
+    const key = row.noCRA;
+    if (reg.includes('REG 4') && !processedKeys.has(key)) {
+      processedKeys.add(key);
+      return true;
+    }
+    return false;
+  });
+  
+  const sortedData = [...priorityData, ...reg4Data];
+  
   let no = 1;
-  data.forEach(row => {
+  sortedData.forEach(row => {
     if (!row.status) row.status = 'BELUM DIISI';
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${no++}</td>
+      <td>${no++}<\/td>
       <td>
         <select class="cra-status ${getStatusClass(row.status)}">
-          <option ${row.status==='ON SCHEDULE'?'selected':''}>ON SCHEDULE</option>
-          <option ${row.status==='BELUM DIISI'?'selected':''}>BELUM DIISI</option>
-          <option ${row.status==='CANCEL'?'selected':''}>CANCEL</option>
-        </select>
-      </td>
-      <td>${row.noCRA}</td>
-      <td>${row.deskripsi}</td>
-      <td>${row.lokasi.join(', ')}</td>
-      <td>${row.kota}</td>
-      <td>${row.regional}</td>
-      <td>${row.pic}</td>
-      <td>${row.tanggal}</td>
-      <td>${row.waktu}</td>
-      <td>${row.crq}</td>
+          <option ${row.status === 'ON SCHEDULE' ? 'selected' : ''}>ON SCHEDULE<\/option>
+          <option ${row.status === 'BELUM DIISI' ? 'selected' : ''}>BELUM DIISI<\/option>
+          <option ${row.status === 'CANCEL' ? 'selected' : ''}>CANCEL<\/option>
+        <\/select>
+       <\/td>
+      <td>${row.noCRA || ''}<\/td>
+      <td>${row.deskripsi || ''}<\/td>
+      <td>${row.lokasi ? row.lokasi.join(', ') : ''}<\/td>
+      <td>${row.kota || ''}<\/td>
+      <td>${row.regional || ''}<\/td>
+      <td>${row.pic || ''}<\/td>
+      <td>${row.tanggal || ''}<\/td>
+      <td>${row.waktu || ''}<\/td>
+      <td>${row.crq || ''}<\/td>
     `;
     tr.querySelector('select').addEventListener('change', e => {
       row.status = e.target.value;
@@ -1263,7 +1292,8 @@ function processCRA(rawData) {
   const map = new Map();
   rawData.forEach(row => {
     const regional = (row['REGIONAL'] || '').toUpperCase();
-    if (!regional.includes('REG 5') && !regional.includes('ALL REG')) return;
+    // Izinkan REG 5, ALL REG, dan REG 4
+    if (!regional.includes('REG 5') && !regional.includes('ALL REG') && !regional.includes('REG 4')) return;
     const noCRA = row['No CRA'] || row['NO CRA'] || '';
     const key = getCRANumber(noCRA);
     if (!key) return;
@@ -1294,7 +1324,34 @@ function processCRA(rawData) {
     }
   });
   CRA_DATA = Array.from(map.values());
+  updateCRACounter(CRA_DATA);
   renderCRA(CRA_DATA);
+}
+
+// ================= UPDATE CRA COUNTER =================
+function updateCRACounter(data) {
+  // Hitung REG 5 (termasuk ALL REG)
+  const reg5Count = data.filter(row => {
+    const reg = (row.regional || '').toUpperCase();
+    return reg.includes('REG 5') || reg.includes('ALL REG');
+  }).length;
+  
+  // Hitung REG 4
+  const reg4Count = data.filter(row => {
+    const reg = (row.regional || '').toUpperCase();
+    return reg.includes('REG 4');
+  }).length;
+  
+  const totalCount = data.length;
+  
+  // Update HTML elements
+  const reg5El = document.getElementById('craReg5Count');
+  const reg4El = document.getElementById('craReg4Count');
+  const totalEl = document.getElementById('craTotalCount');
+  
+  if (reg5El) reg5El.textContent = reg5Count;
+  if (reg4El) reg4El.textContent = reg4Count;
+  if (totalEl) totalEl.textContent = totalCount;
 }
 
 function parseCRAExcel(arrayBuffer) {
@@ -1327,6 +1384,7 @@ document.getElementById('craFile')?.addEventListener('change', e => {
     CRA_RESULT = CRA_DATA;
     window.CRA_RESULT = CRA_RESULT;
     window.DISTRICT_DB = DISTRICT_DB;
+	updateCRACounter(CRA_DATA);
   };
   reader.readAsText(file);
 });
@@ -1418,6 +1476,7 @@ document.getElementById("btnExportTXTAmel").addEventListener("click", function()
   URL.revokeObjectURL(url);
 });
 
+
 // ================= BUTTON RESUME CRA =================
 document.getElementById("btnResumeCRA").addEventListener("click", () => {
   if (!CRA_RESULT.length) {
@@ -1426,8 +1485,11 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
   }
 
   const mainDistricts = [
+    // Reg 5
     "DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER",
-    "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA"
+    "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA",
+    // Reg 4
+    "PEKALONGAN", "YOGYAKARTA", "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"
   ];
   
   let resume = {};
@@ -1454,6 +1516,7 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR",
     "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR",
     "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR",
+	"SINGARAJA": "DENPASAR",
     "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR", "SANUR": "DENPASAR",
     "SEMINYAK": "DENPASAR", "BALI": "DENPASAR", "FLORES": "FLORES",
     "ENDE": "FLORES", "MAUMERE": "FLORES", "LARANTUKA": "FLORES",
@@ -1463,14 +1526,22 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     "SOE": "KUPANG", "WAIKABUBAK": "KUPANG", "WAINGAPU": "KUPANG", "NTT": "KUPANG",
     "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM",
     "BIMA": "MATARAM", "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
+    // Reg 4 districts mapping
+    "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN",
+    "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA",
+    "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO",
+    "MAGELANG": "MAGELANG",
+    "SMR": "SEMARANG", "SEMARANG": "SEMARANG", "JATENG": "SEMARANG",
+    "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA"
   };
 
   let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
 
   CRA_RESULT.forEach((row) => {
-    let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
-    let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim();
-    let district = "UNMAPPED";
+  let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
+  let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim();
+  let district = "UNMAPPED";
+  
     
     if (manualMapping[witel]) {
       district = manualMapping[witel];
@@ -1484,13 +1555,45 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
       }
     }
     
+     
+    // Fallback detection untuk semua district
+	if (district === "UNMAPPED") {
+	// Reg 5
+	if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR") || witel.includes("SINGARAJA")) {
+		district = "DENPASAR";
+	} else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) {
+		district = "FLORES";
+	} else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) {
+		district = "KUPANG";
+	} else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) {
+		district = "MATARAM";
+	} else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) {
+		district = "LAMONGAN";
+	} else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) {
+		district = "MADIUN";
+	}
+	// Reg 4
+	else if (witel.includes("PEKALONGAN") || witel.includes("PKL") || witel.includes("TEGAL") || witel.includes("CIREBON")) {
+		district = "PEKALONGAN";
+	} else if (witel.includes("YOGYAKARTA") || witel.includes("JOGJA") || witel.includes("DIY")) {
+		district = "YOGYAKARTA";
+	} else if (witel.includes("PURWOKERTO") || witel.includes("PWT") || witel.includes("BANYUMAS")) {
+		district = "PURWOKERTO";
+	} else if (witel.includes("MAGELANG")) {
+		district = "MAGELANG";
+	} else if (witel.includes("SEMARANG") || witel.includes("SMR") || witel.includes("JATENG")) {
+		district = "SEMARANG";
+	} else if (witel.includes("SURAKARTA") || witel.includes("SOLO")) {
+		district = "SURAKARTA";
+	}
+	}
+	// 🔴 TANGKAP DATA YANG MASIH UNMAPPED SETELAH FALLBACK 🔴
     if (district === "UNMAPPED") {
-      if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR")) district = "DENPASAR";
-      else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) district = "FLORES";
-      else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) district = "KUPANG";
-      else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) district = "MATARAM";
-      else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) district = "LAMONGAN";
-      else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) district = "MADIUN";
+      console.log("🚨🚨🚨 FINALLY UNMAPPED (setelah fallback) 🚨🚨🚨");
+      console.log("No CRA:", row.noCRA);
+      console.log("kota:", row.kota);
+      console.log("witel:", witel);
+      console.log("====================================");
     }
 
     if (!resume[district]) resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
@@ -1512,7 +1615,11 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
 
   let text = "Resume CRA\n[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
   let index = 1;
-  const displayOrder = ["SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN", "DENPASAR", "FLORES", "KUPANG", "MATARAM"];
+  const displayOrder = [
+    "SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN", 
+    "DENPASAR", "FLORES", "KUPANG", "MATARAM",
+    "PEKALONGAN", "YOGYAKARTA", "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"
+  ];
   
   displayOrder.forEach(district => {
     if (resume[district]) {
@@ -1521,6 +1628,12 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
       index++;
     }
   });
+  
+  // Tampilkan UNMAPPED jika ada
+  if (resume["UNMAPPED"] && resume["UNMAPPED"].total > 0) {
+    let d = resume["UNMAPPED"];
+    text += `${index}. District UNMAPPED : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
+  }
   
   text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
   
