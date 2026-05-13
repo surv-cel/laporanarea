@@ -21,6 +21,9 @@ window.CRA_RESULT = [];
 
 let currentData = [];
 
+// ================= NOP DATABASE UNTUK BALNUS =================
+let NOP_DB = {};  // Format: { "WORKZONE": "NOP" }
+
 // ================= DATA STATIS UNTUK EXECUTIVE REPORT =================
 const STATIC_REPORT_DATA = {
     cme: {
@@ -766,6 +769,36 @@ function loadDistrictMappingFallback() {
     window.DISTRICT_DB = fallbackMapping;
 }
 
+// ================= LOAD NOP DATABASE (khusus BALNUS) =================
+async function loadNOPDatabase() {
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSTBHJ-S5KYC1Z8zSbgbhIkoIefPRDv3aggjxHO09NyF4nrMmIR2MsTr7DZAYJ8-nf46VQCrKm2aIxg/pub?output=csv";
+    
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        
+        NOP_DB = {};
+        
+        lines.forEach((line, idx) => {
+            if (idx === 0) return; // skip header
+            const cols = line.split(',').map(s => s.trim().toUpperCase());
+            const dbCode = cols[0];
+            const dbCity = cols[1];
+            const dbNop = cols[2];
+            
+            if (dbCode && dbNop) {
+                NOP_DB[dbCode] = dbNop;
+                if (dbCity) NOP_DB[dbCity] = dbNop;
+            }
+        });
+        
+        console.log("✅ NOP Database loaded:", Object.keys(NOP_DB).length, "entries");
+    } catch (err) {
+        console.error("❌ Gagal load NOP database:", err);
+    }
+}
+
 // ================= CSV PARSER =================
 function parseCSV(text) {
     text = text.replace(/^\uFEFF/, '');
@@ -875,6 +908,7 @@ function renderData(data) {
             jatimBox.appendChild(card);
         } else if (DB_BALNUS.has(zone)) {
             card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+            card.dataset.workzone = zone;  // TAMBAHKAN: simpan workzone untuk NOP mapping
             balnusBox.appendChild(card);
         }
     });
@@ -888,7 +922,7 @@ function renderData(data) {
 
     renderStatusBadges(data);
 	
-	//JUMLAH GAMAS
+	// JUMLAH GAMAS
 	updateRegionStats(data);
     
     if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
@@ -1110,6 +1144,7 @@ function renderStatusBadges(data) {
 document.getElementById("btnSearch")?.addEventListener("click", () => applyFilters());
 document.getElementById("themeToggle")?.addEventListener("click", () => document.body.classList.toggle("light"));
 
+// ================= COPY COLUMN DENGAN NOP UNTUK BALNUS =================
 function copyColumn(type) {
     const box = document.querySelector(`#${type} .content`);
     if (!box || !box.children.length) { 
@@ -1118,10 +1153,61 @@ function copyColumn(type) {
     }
     
     let text = '';
-    box.querySelectorAll('.card').forEach(card => { 
-        text += card.innerText.trim() + '\n\n'; 
-    });
+    
+    if (type === 'balnus') {
+        // Format khusus BALNUS dengan pengelompokan NOP
+        text = formatBalnusWithNOP(box);
+    } else {
+        // Format biasa untuk JATIM dan REG4
+        box.querySelectorAll('.card').forEach(card => { 
+            text += card.innerText.trim() + '\n\n'; 
+        });
+    }
+    
     navigator.clipboard.writeText(text.trim()).then(() => alert(`Data ${type.toUpperCase()} berhasil di-copy`));
+}
+
+function formatBalnusWithNOP(box) {
+    const cards = Array.from(box.querySelectorAll('.card'));
+    const grouped = {};
+    
+    cards.forEach(card => {
+        const workzone = card.dataset.workzone || '';
+        // Cari NOP berdasarkan workzone
+        let nop = 'LAINNYA';
+        const upperWorkzone = workzone.toUpperCase();
+        
+        if (NOP_DB[upperWorkzone]) {
+            nop = NOP_DB[upperWorkzone];
+        } else {
+            // Coba cari dengan partial match
+            for (const [key, value] of Object.entries(NOP_DB)) {
+                if (upperWorkzone.includes(key) || key.includes(upperWorkzone)) {
+                    nop = value;
+                    break;
+                }
+            }
+        }
+        
+        if (!grouped[nop]) grouped[nop] = [];
+        grouped[nop].push(card.innerText.trim());
+    });
+    
+    // Urutkan NOP secara alfabetis
+    const sortedNops = Object.keys(grouped).sort();
+    
+    let result = '';
+    for (const nop of sortedNops) {
+        result += `#NOP ${nop} :\n`;
+        grouped[nop].forEach((item, idx) => {
+            // Hapus nomor urut awal dari item (karena akan diganti)
+            let cleanItem = item.replace(/^\d+\.\s*/, '');
+            result += `${idx + 1}. ${cleanItem}\n\n`;
+        });
+        result += '\n';
+    }
+    
+    return result;
 }
 
 // ================= GAMAS CONVERTER =================
@@ -1880,7 +1966,7 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
                 block: 'center'
             });
         }
-    }, 100); // delay 100ms agar modal sempat ter-render
+    }, 100);
 });
 
 function showResumeModal(text) {
@@ -1931,6 +2017,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadWorkzones();
     loadPICMapping();
     loadDistrictMapping();
+    loadNOPDatabase();  // TAMBAHKAN UNTUK LOAD NOP DATABASE
     renderStatusFilter();
     
     const eskInput = document.getElementById('eskInput');
