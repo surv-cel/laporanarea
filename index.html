@@ -164,6 +164,60 @@ Witel : KEDIRI
 
 <!-- SPACING: Kasih jarak sebelum Eskalasi -->
 <div style="height: 10px;"></div>
+
+
+<!-- ========== SECTION MONITOR TERA > 50% ========== -->
+<div class="monitor-section" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0; color: #2c5364;">
+            📡 MONITOR LINK TERA > 50% 
+            <span style="font-size: 12px; background: #27ae60; color: white; padding: 4px 8px; border-radius: 4px; margin-left: 10px;">LIVE</span>
+        </h3>
+        <div>
+            <button class="btn btn-sm btn-success" onclick="copyTeraReport()" style="margin-right: 8px;">
+                📋 Copy Laporan
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="fetchTeraData()">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; opacity: 0.9;">Total Link</div>
+            <div style="font-size: 24px; font-weight: bold;" id="totalLink">0</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; opacity: 0.9;">Link > 50%</div>
+            <div style="font-size: 24px; font-weight: bold;" id="totalTera">0</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; opacity: 0.9;">Kritis (>90%)</div>
+            <div style="font-size: 24px; font-weight: bold;" id="totalKritis">0</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; opacity: 0.9;">Warning (75-90%)</div>
+            <div style="font-size: 24px; font-weight: bold;" id="totalWarning">0</div>
+        </div>
+    </div>
+
+    <!-- List View -->
+    <div id="teraListContainer" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 8px; padding: 10px;">
+        <div style="text-align: center; padding: 40px; color: #999;">
+            ⏳ Memuat data...
+        </div>
+    </div>
+
+    <div style="margin-top: 10px; font-size: 12px; color: #999; display: flex; justify-content: space-between;">
+        <span id="updateStatus">Terakhir update: -</span>
+        <span>Data real-time dari graph</span>
+    </div>
+</div>
+<div style="height: 10px;"></div>
+
+
 <!-- ================= CONVERTER ESKALASI ================= -->
 <section class="section" id="eskalasi">
   <div class="page-title">
@@ -197,29 +251,36 @@ Witel : KEDIRI
    
 
 <!-- ================= CRA ================= -->
+<!-- ================= CRA ================= -->
 <section class="cra-section">
-  <h2>📋 CRA (Reg 5)</h2>
+  <div class="cra-header">
+    <h2>📋 CRA</h2>
+    <div class="cra-stats-cards">
+      <div class="cra-stat-card reg5-card">
+        <span class="cra-stat-label">REG 5</span>
+        <span class="cra-stat-number" id="craReg5Count">0</span>
+      </div>
+      <div class="cra-stat-card reg4-card">
+        <span class="cra-stat-label">REG 4</span>
+        <span class="cra-stat-number" id="craReg4Count">0</span>
+      </div>
+      <div class="cra-stat-card total-card">
+        <span class="cra-stat-label">TOTAL CRA</span>
+        <span class="cra-stat-number" id="craTotalCount">0</span>
+      </div>
+    </div>
+  </div>
 
   <div class="cra-actions">
-  <label class="upload-box">
-    <input type="file" id="craFile" hidden />
-    <span>📂 Upload CRA</span>
-  </label>
-
-  <button id="btnExportCRA" class="btn primary">
-    📊 Export Excel
-  </button>
-
-  <button id="btnExportTXT" class="btn dark">
-    📝 Export TXT
-  </button>
-  <button id="btnExportTXTAmel" class="btn dark">
-  📝 Export TXT Permintaan Bu Amel
-  </button>
-  <button id="btnResumeCRA" class="btn dark">
-  Resume CRA
-  </button>
-</div>
+    <label class="upload-box">
+      <input type="file" id="craFile" hidden />
+      <span>📂 Upload CRA</span>
+    </label>
+    <button id="btnExportCRA" class="btn primary">📊 Export Excel</button>
+    <button id="btnExportTXT" class="btn dark">📝 Export TXT</button>
+    <button id="btnExportTXTAmel" class="btn dark">📝 Export TXT Permintaan Bu Amel</button>
+    <button id="btnResumeCRA" class="btn dark">Resume CRA</button>
+  </div>
 
   <div class="cra-table-wrap">
     <table id="craTable">
@@ -230,7 +291,7 @@ Witel : KEDIRI
           <th>No CRA</th>
           <th>Judul</th>
           <th>Lokasi</th>
-		  <th>Witel</th>
+          <th>Witel</th>
           <th>Regional</th>
           <th>PIC</th>
           <th>Tanggal</th>
@@ -242,22 +303,16 @@ Witel : KEDIRI
     </table>
   </div>
   
-<div id="resumeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
-  <div style="background:#fff; width:500px; max-width:90%; padding:20px; border-radius:8px;">
-    
-    <h3>Resume CRA</h3>
-
-    <textarea id="resumeText"
-      style="width:100%; height:250px; margin-bottom:10px; resize:none;"></textarea>
-
-    <div style="text-align:right;">
-      <button id="copyResume">Copy</button>
-      <button id="closeResume">Close</button>
+  <div id="resumeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:#fff; width:500px; max-width:90%; padding:20px; border-radius:8px;">
+      <h3>Resume CRA</h3>
+      <textarea id="resumeText" style="width:100%; height:250px; margin-bottom:10px; resize:none;"></textarea>
+      <div style="text-align:right;">
+        <button id="copyResume">Copy</button>
+        <button id="closeResume">Close</button>
+      </div>
     </div>
-
   </div>
-</div>
-
 </section>
 
 
