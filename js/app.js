@@ -1,537 +1,2157 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <title>Laporan GAMAS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="css/style.css" />
-  <style>
-    /* CSS tambahan untuk Executive Report Button dan Modal */
-    .executive-btn {
-      background: linear-gradient(135deg, #dc2626, #b91c1c);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      transition: all 0.3s;
-      box-shadow: 0 2px 8px rgba(220,38,38,0.3);
-    }
-    .executive-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(220,38,38,0.4);
-    }
-    .executive-modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      z-index: 10000;
-      justify-content: center;
-      align-items: center;
-    }
-    .executive-modal {
-      background: white;
-      border-radius: 24px;
-      width: 90%;
-      max-width: 1000px;
-      max-height: 85vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-    }
-    .executive-modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      color: white;
-    }
-    .executive-modal-header h2 {
-      margin: 0;
-      font-size: 22px;
-    }
-    .executive-modal-header button {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 28px;
-      cursor: pointer;
-    }
-    .executive-shift-buttons {
-      padding: 16px 24px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      gap: 12px;
-    }
-    .shift-btn {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 40px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .shift-pagi {
-      background: #f59e0b;
-      color: white;
-    }
-    .shift-malam {
-      background: #3b82f6;
-      color: white;
-    }
-    .shift-btn:hover {
-      transform: scale(1.02);
-      opacity: 0.9;
-    }
-    .executive-modal-body {
-      padding: 20px 24px;
-      overflow-y: auto;
-      flex: 1;
-    }
-    .executive-report-content {
-      background: #f1f5f9;
-      border-radius: 12px;
-      padding: 20px;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      max-height: 500px;
-      overflow-y: auto;
-    }
-    .executive-modal-footer {
-      padding: 16px 24px;
-      border-top: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-    .executive-modal-footer button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .copy-executive {
-      background: #22c55e;
-      color: white;
-    }
-    .download-executive {
-      background: #3b82f6;
-      color: white;
-    }
-  </style>
-</head>
-<body class="light">
+// ================= WORKZONE =================
+let DB_JATIM = new Set();
+let DB_BALNUS = new Set();
+let DB_REG4 = new Set();
 
-<div class="page-title">
-  <h1>📊 Laporan GAMAS (CSV)</h1>
-</div>
+// SIMPAN DATA CSV ASLI
+let ALL_DATA = [];
+let CRA_RESULT = [];
+let ORIGINAL_CRA_DATA = [];  // 🆕 SIMPAN DATA CRA ASLI UNTUK FILTER
+let CURRENT_CRA_DATA = [];   // 🆕 DATA YANG SEDANG DITAMPILKAN
 
-<div class="top-bar">
+// FILTER STATUS AKTIF
+let ACTIVE_STATUSES = [];
 
-  <div class="header">
-    <div class="upload">
-      <label class="upload-btn">
-        Pilih File CSV
-        <input type="file" id="fileInput" accept=".csv" hidden />
-      </label>
-      <span class="upload-filename" id="fileName">Belum ada file</span>
-    </div>
-    <!-- TOMBOL EXECUTIVE REPORT BARU -->
-    <button id="executiveReportBtn" class="executive-btn">
-      📋 EXECUTIVE REPORT DM PAGI MALAM
-    </button>
-  </div>
-  
-   <!-- TAMBAHKAN STATISTIK DISINI -->
-  <div class="stats-region">
-    <div class="stat-region jatim-stat">🇯🇵 JATIM : <span id="statJatim">0</span></div>
-    <div class="stat-region balnus-stat">🌴 BALNUS : <span id="statBalnus">0</span></div>
-    <div class="stat-region reg4-stat">📌 REG 4 : <span id="statReg4">0</span></div>
-  </div>
-</div>
+// ambil dari data google sheet
+let PIC_DB = {};
 
-  <div class="search-area">
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search INC (contoh: INC123, INC456)"
-    />
-    <button id="btnSearch">OK</button>
-  </div>
+// ambil untuk resume cra DM 
+let DISTRICT_DB = {};
 
-  <div class="stats">
-    <div class="badge total" id="totalCount">TOTAL : 0</div>
-    <div class="badge bb" id="bbCount">BB : 0</div>
-    <div class="badge ip" id="ipCount">IP : 0</div>
-    <div class="badge gpon" id="gponCount">GPON : 0</div>
-    <div class="badge feeder" id="feederCount">FEEDER : 0</div>
-    <div class="badge distri" id="distriCount">DISTRIBUSI : 0</div>
-  </div>
+window.DISTRICT_DB = {};
+window.CRA_RESULT = [];
 
-  <div class="theme-area">
-    <div class="toggle" id="themeToggle">🌙 Dark</div>
-    <div class="trademark">
-      <span>KERJO O REK</span>
-      <span>SING GENAH</span>
-    </div>
-  </div>
+let currentData = [];
 
-</div>
+// ================= NOP DATABASE UNTUK BALNUS =================
+let NOP_DB = {};  // Format: { "WORKZONE": "NOP" }
 
-<!-- ================= FILTER ================= -->
-<div id="statusFilterBox" class="status-filter"></div>
+// ================= DATA STATIS UNTUK EXECUTIVE REPORT =================
+const STATIC_REPORT_DATA = {
+    cme: {
+        headers: ["Sub District", "jmlSTO", "jmlLap", "OK", "NOK", "%Lap", "%OK"],
+        rows: [
+            ["DPS", 11, 11, 11, 0, 100, 100],
+            ["JER", 30, 30, 30, 0, 100, 100],
+            ["KD", 28, 28, 28, 0, 100, 100],
+            ["ML", 24, 24, 24, 0, 100, 100],
+            ["MN", 31, 31, 31, 0, 100, 100],
+            ["MDR", 23, 23, 23, 0, 100, 100],
+            ["NTB", 15, 15, 15, 0, 100, 100],
+            ["NTT", 25, 25, 25, 0, 100, 100],
+            ["PSN", 19, 19, 19, 0, 100, 100],
+            ["SDA", 22, 22, 22, 0, 100, 100],
+            ["SGR", 18, 18, 18, 0, 100, 100],
+            ["SBS", 8, 8, 8, 0, 100, 100],
+            ["SBU", 23, 23, 23, 0, 100, 100],
+            ["TTL", 277, 277, 277, 0, 100, 100]
+        ]
+    },
+    utilisasi: {
+        tera: [
+            "KBL - JT2 BE5 | 86.9%",
+            "KBL - BTC BE15 | 59.2%",
+            "KBL - RKT BE9 | 90.6%",
+            "RKT - MTR BE29 | 78.2%",
+            "RKT - KLM BE16 | 80.2%"
+        ],
+        lbcdn: [],
+        pewag: [],
+        gpongpon: "23 NODE"
+    },
+    banjir: {
+        districtCount: 13,
+        stoCount: 266,
+        terdampak: 0
+    },
+    peService: {
+        hsi: "Normal",
+        transit: "Normal",
+        vpn: "Normal"
+    },
+    osase: "Nihil",
+    internet: "All Witel Normal",
+    useetv: "All Witel Normal",
+    voice: "All Witel Normal",
+    gamasNetwork: "Nihil",
+    bencanaAlam: "Nihil",
+    eventPenting: "Nihil"
+};
 
-<!-- ================= STATUS BADGE ================= -->
-<div id="statusBadges" class="status-badges"></div>
+// ================= FUNGSI DETEKSI UNTUK EXECUTIVE REPORT =================
+function detectNEAkses(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("GAMAS | AKSES | GPON") || 
+               summary.includes("[SQM GAMAS] [GPON");
+    });
+}
 
-<!-- <div class="export-area"> -->
-<!--  <button id="exportExcel" class="export-btn"> -->
-<!--    📥 Export Laporan Gamas DM  -->
-<!--  </button> -->
-<!-- </div> -->
+function detectIPBackbone(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("(REPAIR) IP AREA 3") || 
+               summary.includes("(RECOVERY) IP AREA 3");
+    });
+}
 
-<div id="jatim" class="section">
-  <div class="section-header">
-    <h2>JATIM</h2>
-    <button class="copy-btn" onclick="copyColumn('jatim')">COPY</button>
-  </div>
-  <div class="content"></div>
-</div>
+function detectTransportBackbone(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("(REPAIR) TRA AREA 3") || 
+               summary.includes("(RECOVERY) TRA AREA 3");
+    });
+}
 
-<div id="balnus" class="section">
-  <div class="section-header">
-    <h2>BALNUS</h2>
-    <button class="copy-btn" onclick="copyColumn('balnus')">COPY</button>
-  </div>
-  <div class="content"></div>
-</div>
+function detectFeeder(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("FEEDER");
+    });
+}
 
-<!-- ================= REG 4 ================= -->
-<div id="reg4" class="section">
-  <div class="section-header">
-    <h2>REG 4</h2>
-    <button class="copy-btn" onclick="copyColumn('reg4')">COPY</button>
-  </div>
-  <div class="content"></div>
-</div>
+function detectDistribusi(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("DISTRIBUSI");
+    });
+}
 
-<!-- ================= MODAL EXECUTIVE REPORT ================= -->
-<div id="executiveModal" class="executive-modal-overlay">
-  <div class="executive-modal">
-    <div class="executive-modal-header">
-      <h2>📋 EXECUTIVE REPORT</h2>
-      <button id="closeExecutiveModal">&times;</button>
-    </div>
-    <div class="executive-shift-buttons">
-      <button class="shift-btn shift-pagi" onclick="generateExecutiveReport('PAGI')">🕘 Laporan Pagi (09.00 WIB)</button>
-      <button class="shift-btn shift-malam" onclick="generateExecutiveReport('MALAM')">🕘 Laporan Malam (21.00 WIB)</button>
-    </div>
-    <div class="executive-modal-body">
-      <div id="executiveReportContent" class="executive-report-content">
-        Pilih shift laporan di atas untuk menghasilkan Executive Report...
-      </div>
-    </div>
-    <div class="executive-modal-footer">
-      <button class="copy-executive" onclick="copyExecutiveReport()">📋 Copy</button>
-      <button class="download-executive" onclick="downloadExecutiveReport()">📥 Download TXT</button>
-    </div>
-  </div>
-</div>
+function detectODP(data) {
+    return data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("ODP");
+    });
+}
 
-<!-- GAMAS CONVERTER - LEBAR FULL -->
-<div style="margin: 40px 0 60px 0; width: 100%;">
-    <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-size: 42px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;">
-            📱  CONVERTER GAMAS TIDAK STANDART 
-        </h1>
-        <div style="width: 100px; height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); margin: 15px auto; border-radius: 2px;"></div>
-    </div>
-
-    <div style="background: white; border-radius: 20px; padding: 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; width: 100%; max-width: 1200px; margin: 0 auto; box-sizing: border-box;">
+// ================= UPDATE STATISTIK REGION =================
+function updateRegionStats(data) {
+    let jatimCount = 0;
+    let balnusCount = 0;
+    let reg4Count = 0;
+    
+    data.forEach(row => {
+        const summary = row["SUMMARY"] || "";
+        const zone = (row["WORKZONE"] || "").toUpperCase();
         
-        <p style="color: #666; margin-bottom: 25px; font-size: 16px; text-align: center;">
-            ✨ Copy paste data GAMAS dari Telegram — <strong>otomatis terformat 1 baris!</strong>
-        </p>
-        
-        <div style="position: relative; margin-bottom: 25px;">
-            <textarea 
-                id="telegramData" 
-                rows="6" 
-                oninput="autoConvertGamas()"
-                placeholder="Contoh: 
-/open_gamas_distribusi
-Nama / NIK pelapor : 720178 / PRASADJA
-Witel : KEDIRI
-..."
-                style="width: 100%; 
-                       padding: 20px; 
-                       border: 2px solid #e0e0e0; 
-                       border-radius: 15px; 
-                       font-family: 'Courier New', monospace; 
-                       font-size: 14px;
-                       line-height: 1.6;
-                       resize: vertical;
-                       transition: all 0.3s;
-                       box-sizing: border-box;
-                       background: #fafafa;"
-            ></textarea>
+        // Prioritas REG 4 dari SUMMARY
+        if (summary.includes("GAMAS R4") || summary.toUpperCase().includes("GAMAS R4")) {
+            reg4Count++;
+        }
+        // Cek REG 4 dari WORKZONE
+        else if (DB_REG4.has(zone)) {
+            reg4Count++;
+        }
+        // Cek JATIM
+        else if (DB_JATIM.has(zone)) {
+            jatimCount++;
+        }
+        // Cek BALNUS
+        else if (DB_BALNUS.has(zone)) {
+            balnusCount++;
+        }
+    });
+    
+    document.getElementById("statJatim").textContent = jatimCount;
+    document.getElementById("statBalnus").textContent = balnusCount;
+    document.getElementById("statReg4").textContent = reg4Count;
+    
+    console.log(`📊 STATS - JATIM: ${jatimCount}, BALNUS: ${balnusCount}, REG4: ${reg4Count}`);
+}
+
+// ================= FORMAT TIKET UNTUK EXECUTIVE REPORT =================
+function formatExecutiveTiket(row, index, type) {
+    const incident = row["INCIDENT"] || "-";
+    const summary = row["SUMMARY"] || "";
+    const update = row["WORKLOG SUMMARY"] || "-";
+    const ttr = row["TTR END TO END"] || "";
+    const durasiFormatted = formatDurasi(ttr);
+    
+    let extraInfo = "";
+    if (type === "NE_AKSES") {
+        const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+        if (iboosterMatch) extraInfo = ` | ${iboosterMatch[1]}`;
+    }
+    
+    return `${index}. ${incident}\n${summary}${extraInfo}\nUpdate : ${update}\n⏱️ Durasi Downtime: ${durasiFormatted}\n\n`;
+}
+
+function formatExecutiveGamasRow(row, index, type) {
+    const incident = row["INCIDENT"] || "-";
+    const summary = row["SUMMARY"] || "";
+    const worklog = row["WORKLOG SUMMARY"] || "-";
+    const ttrEndToEnd = row["TTR END TO END"] || "00:00:00";
+    
+    const parts = summary.split('|').map(p => p.trim());
+    const sqmGamas = parts[0] || "[SQM GAMAS]";
+    const akses = parts[1] || "AKSES";
+    const jenis = parts[2] || "";
+    const tif = parts[3] || "TIF-3";
+    const reg5 = parts[4] || "REG-5";
+    const penyebab = parts[5] || "";
+    const perbaikan = parts[6] || "";
+    const lokasiJenis = parts[7] || "";
+    const lokasi = parts[8] || "";
+    const estimasi = parts[9] || "";
+    
+    const odcMatch = summary.match(/\[(ODC[^\]]+)\]/);
+    const odcList = odcMatch ? odcMatch[1] : "";
+    const odpMatches = summary.match(/\[(ODP[^\]]+)\]/g);
+    const odpList = odpMatches && odpMatches.length > 0 ? odpMatches[0] : "";
+    const picMatch = summary.match(/\(PIC ([^)]+)\)/);
+    const pic = picMatch ? picMatch[1] : "";
+    const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+    const ibooster = iboosterMatch ? iboosterMatch[1] : "";
+    
+    let durationFormatted = ttrEndToEnd;
+    if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
+        const timeParts = ttrEndToEnd.split(':');
+        if (timeParts.length === 3) {
+            const hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
+            if (hours > 0 && minutes > 0) durationFormatted = `${hours} jam ${minutes} Menit`;
+            else if (hours > 0) durationFormatted = `${hours} jam`;
+            else if (minutes > 0) durationFormatted = `${minutes} Menit`;
+            else durationFormatted = `${timeParts[2]} Detik`;
+        }
+    }
+    
+    let result = `${index}. ${incident} | ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi})`;
+    if (odcList) result += ` | [${odcList}]`;
+    if (odpList) result += ` | Datek ODP Terdampak : [${odpList}]`;
+    if (pic) result += ` | (PIC ${pic})`;
+    if (ibooster) result += ` | ${ibooster}`;
+    
+    result += `\nUpdate : ${worklog}\n⏱️ Durasi Downtime : ${durationFormatted}\n\n`;
+    
+    return result;
+}
+
+// ================= GENERATE EXECUTIVE REPORT =================
+let currentExecutiveReport = "";
+
+function generateExecutiveReport(shift) {
+    if (!ALL_DATA.length) {
+        alert("Silahkan upload file CSV terlebih dahulu!");
+        return;
+    }
+    
+    const now = new Date();
+    const hari = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const jam = shift === 'PAGI' ? '09.00 WIB' : '21.00 WIB';
+    
+    const neAkses = detectNEAkses(ALL_DATA);
+    const ipBackbone = detectIPBackbone(ALL_DATA);
+    const transportBackbone = detectTransportBackbone(ALL_DATA);
+    const feeder = detectFeeder(ALL_DATA);
+    const distribusi = detectDistribusi(ALL_DATA);
+    const odp = detectODP(ALL_DATA);
+    
+    const ipCount = ipBackbone.length;
+    const transportCount = transportBackbone.length;
+    const neCount = neAkses.length;
+    const feederCount = feeder.length;
+    const distribusiCount = distribusi.length;
+    const odpCount = odp.length;
+    
+    let ipText = "Nihil";
+    if (ipCount > 0) {
+        ipText = `${ipCount} Tiket\n`;
+        ipBackbone.forEach((row, idx) => {
+            ipText += `${idx + 1}. ${row["INCIDENT"] || '-'}\n   ${row["SUMMARY"] || ''}\n   Update : ${row["WORKLOG SUMMARY"] || '-'}\n   ⏱️ Durasi : ${formatDurasi(row["TTR END TO END"] || '')}\n\n`;
+        });
+    }
+    
+    let transportText = "Nihil";
+    if (transportCount > 0) {
+        transportText = `${transportCount} Tiket\n`;
+        transportBackbone.forEach((row, idx) => {
+            transportText += `${idx + 1}. ${row["INCIDENT"] || '-'}\n   ${row["SUMMARY"] || ''}\n   Update : ${row["WORKLOG SUMMARY"] || '-'}\n   ⏱️ Durasi : ${formatDurasi(row["TTR END TO END"] || '')}\n\n`;
+        });
+    }
+    
+    let neText = "Nihil";
+    if (neCount > 0) {
+        neText = `${neCount} Tiket\n`;
+        neAkses.forEach((row, idx) => {
+            neText += formatExecutiveTiket(row, idx + 1, "NE_AKSES");
+        });
+    }
+    
+    let feederText = "Nihil";
+    if (feederCount > 0) {
+        feederText = `${feederCount} Tiket\n`;
+        feeder.forEach((row, idx) => {
+            feederText += formatExecutiveGamasRow(row, idx + 1, "FEEDER");
+        });
+    }
+    
+    let distribusiText = "Nihil";
+    if (distribusiCount > 0) {
+        distribusiText = `${distribusiCount} Tiket\n`;
+        distribusi.forEach((row, idx) => {
+            distribusiText += formatExecutiveGamasRow(row, idx + 1, "DISTRIBUSI");
+        });
+    }
+    
+    let odpText = "Nihil";
+    if (odpCount > 0) {
+        odpText = `${odpCount} Tiket\n`;
+        odp.forEach((row, idx) => {
+            odpText += formatExecutiveGamasRow(row, idx + 1, "ODP");
+        });
+    }
+    
+    let cmeTable = "Sub District|jmlSTO|jmlLap|OK|NOK|%Lap|%OK\n";
+    cmeTable += "-----------|------|------|--|---|----|---\n";
+    STATIC_REPORT_DATA.cme.rows.forEach(row => {
+        cmeTable += `${row[0]}|${row[1]} |${row[2]} |${row[3]} |${row[4]}|${row[5]}|${row[6]}\n`;
+    });
+    cmeTable += "\n* test beban dilaksanakan mingguan pada hari Jumat pukul 10.00 waktu setempat\n";
+    cmeTable += "* BBM OK jika stock untuk running genset >12 jam";
+    
+    let utilisasiText = "";
+    if (STATIC_REPORT_DATA.utilisasi.tera.length > 0) {
+        utilisasiText += "Tera > 50% :\n";
+        STATIC_REPORT_DATA.utilisasi.tera.forEach(item => {
+            utilisasiText += `${item}\n`;
+        });
+    }
+    if (STATIC_REPORT_DATA.utilisasi.gpongpon) {
+        utilisasiText += `\nUplink GPON to GPON >80% : ${STATIC_REPORT_DATA.utilisasi.gpongpon}\n`;
+    }
+    if (utilisasiText === "") utilisasiText = "-\n";
+    
+    // ================= CRA RESUME =================
+    let craResumeText = "";
+    let craTotal = 0;
+    
+    const districtList = [
+        "SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN",
+        "DENPASAR", "FLORES", "KUPANG", "MATARAM", "PEKALONGAN", "YOGYAKARTA",
+        "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"
+    ];
+    
+    let resume = {};
+    districtList.forEach(district => {
+        resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    });
+    resume["UNMAPPED"] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    
+    // ================= MAPPING LENGKAP =================
+    const manualMapping = {
+        // SURABAYA
+        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+        "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+        "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+        "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+        // MALANG
+        "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG", "TULUNGAGUNG": "MALANG",
+        // SIDOARJO
+        "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO", "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+        // JEMBER
+        "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER", "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER", "PROBOLINGGO": "JEMBER",
+        // MADIUN
+        "MDN": "MADIUN", "MADIUN": "MADIUN", "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN", "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN", "TRENGGALEK": "MADIUN",
+        // LAMONGAN
+        "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN", "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+        // DENPASAR
+        "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR", "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR", "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR", "SINGARAJA": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR", "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR",
+        // FLORES
+        "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES", "LARANTUKA": "FLORES", "LABUAN BAJO": "FLORES", "RUTENG": "FLORES", "BAJAWA": "FLORES",
+        // KUPANG
+        "KUPANG": "KUPANG", "TIMOR": "KUPANG", "SUMBA": "KUPANG", "ROTE": "KUPANG", "ATAMBUA": "KUPANG", "KEFAMENANU": "KUPANG", "SOE": "KUPANG", "WAIKABUBAK": "KUPANG", "WAINGAPU": "KUPANG", "NTT": "KUPANG",
+        // MATARAM
+        "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM", "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
+        // PEKALONGAN
+        "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN", "ADIWRENA": "PEKALONGAN", "BOBOTSARI": "PEKALONGAN", "BANDAR SEDAYU": "PEKALONGAN", "BULAKAMBA": "PEKALONGAN", "BALAPULANG": "PEKALONGAN", "BUMIAYU": "PEKALONGAN", "BREBES": "PEKALONGAN", "BATANG": "PEKALONGAN", "COMAL": "PEKALONGAN", "KEDUNGWUNI": "PEKALONGAN", "KAJEN": "PEKALONGAN", "KETANGGUNGAN TIMUR": "PEKALONGAN", "MARGADANA": "PEKALONGAN", "PURBALINGGA": "PEKALONGAN", "PEMALANG": "PEKALONGAN", "RANDUDONGKAL": "PEKALONGAN", "SUBAH": "PEKALONGAN", "SLAWI": "PEKALONGAN", "TEGAL": "PEKALONGAN", "TANJUNG TEGAL": "PEKALONGAN",
+        // YOGYAKARTA
+        "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA", "BABARSARI": "YOGYAKARTA", "BANTUL": "YOGYAKARTA", "GODEAN": "YOGYAKARTA", "YOKYAKARTA KOTABARU": "YOGYAKARTA", "YOGYAKARTA KENTUNGAN": "YOGYAKARTA", "KOTA GEDE": "YOGYAKARTA", "KALASAN": "YOGYAKARTA", "PUGERAN": "YOGYAKARTA", "PAKEM KALIURANG": "YOGYAKARTA", "SLEMAN": "YOGYAKARTA", "WONOSARI": "YOGYAKARTA", "WATES": "YOGYAKARTA",
+        // PURWOKERTO
+        "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO", "AJIBARANG": "PURWOKERTO", "BANJARNEGARA": "PURWOKERTO", "BATURADEN": "PURWOKERTO", "CILACAP": "PURWOKERTO", "CILONGOK": "PURWOKERTO", "GUMILIR": "PURWOKERTO", "KLAMPOK": "PURWOKERTO", "KROYA": "PURWOKERTO", "MAJENANG": "PURWOKERTO", "MAOS": "PURWOKERTO", "SIDAREJA": "PURWOKERTO", "SUKARAJA": "PURWOKERTO", "WONOSOBO": "PURWOKERTO",
+        // MAGELANG
+        "MAGELANG": "MAGELANG", "GOMBONG": "MAGELANG", "KARANGANYAR KEBUMEN": "MAGELANG", "KEBUMEN": "MAGELANG", "KUTOARJO": "MAGELANG", "KUTOWINANGUN": "MAGELANG", "MUNGKID": "MAGELANG", "MERTOYUDAN": "MAGELANG", "MUNTILAN": "MAGELANG", "PARAKAN": "MAGELANG", "PURWOREJO": "MAGELANG", "TEMANGGUNG": "MAGELANG",
+        // SEMARANG
+        "SMR": "SEMARANG", "SEMARANG": "SEMARANG", "JATENG": "SEMARANG", "AMBARAWA": "SEMARANG", "BANGSRI": "SEMARANG", "BANDUNGAN": "SEMARANG", "SEMARANG BANYUMANIK": "SEMARANG", "BOJA": "SEMARANG", "BAWEN": "SEMARANG", "DEMAK": "SEMARANG", "GOMBEL": "SEMARANG", "SEMARANG GENUK": "SEMARANG", "SEMARANG JOHAR": "SEMARANG", "JEPARA": "SEMARANG", "JUWANA": "SEMARANG", "KENDAL": "SEMARANG", "KELING": "SEMARANG", "KARIMUNJAWA": "SEMARANG", "KUDUS": "SEMARANG", "LASEM": "SEMARANG", "MIJEN": "SEMARANG", "SEMARANG MAJAPAHIT": "SEMARANG", "SEMARANG MANGKANG": "SEMARANG", "PATI": "SEMARANG", "PECANGAAN": "SEMARANG", "REMBANG": "SEMARANG", "SUKOREJO": "SEMARANG", "SALATIGA": "SEMARANG", "SEMARANG CANDI": "SEMARANG", "SEMARANG TUGU": "SEMARANG", "SEMARANG SIMPANGLIMA": "SEMARANG", "TAYU": "SEMARANG", "UNGARAN": "SEMARANG", "WELERI": "SEMARANG", "WONOREJO": "SEMARANG",
+        // SURAKARTA
+        "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA", "SOLO BEKONANG": "SURAKARTA", "BLORA": "SURAKARTA", "BATURETNO": "SURAKARTA", "BOYOLALI": "SURAKARTA", "CEPU": "SURAKARTA", "DELANGGU": "SURAKARTA", "GUBUG": "SURAKARTA", "GODONG": "SURAKARTA", "SOLO GLADAK": "SURAKARTA", "JATISRONO": "SURAKARTA", "KARANG ANYAR SOLO": "SURAKARTA", "KLATEN": "SURAKARTA", "SOLO KERTEN": "SURAKARTA", "KARTOSURO": "SURAKARTA", "SOLO MOJOSONGO": "SURAKARTA", "NGAWEN": "SURAKARTA", "PEDAN": "SURAKARTA", "PURWODADI GROBOGAN": "SURAKARTA", "RANDUBLATUNG": "SURAKARTA", "SUKOHARJO": "SURAKARTA", "SOLO BARU": "SURAKARTA", "SOLO PALUR": "SURAKARTA", "SRAGEN": "SURAKARTA", "TOROH": "SURAKARTA", "TAWANGMANGU": "SURAKARTA", "WONOGIRI": "SURAKARTA", "WIROSARI": "SURAKARTA"
+    };
+    
+    console.log("========== DEBUG CRA RESULT ==========");
+    console.log("Total CRA_RESULT:", CRA_RESULT ? CRA_RESULT.length : 0);
+    
+    if (CRA_RESULT && CRA_RESULT.length > 0) {
+        CRA_RESULT.forEach((row, idx) => {
+            let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim();
+            let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim();
+            let district = "UNMAPPED";
+            let originalWitel = witel;
             
-            <div style="position: absolute; top: 15px; right: 15px; background: white; padding: 5px 20px; border-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <span id="statusIndicator" style="font-size: 13px; font-weight: 600; color: #666;">
-                    ⏳ Menunggu input...
-                </span>
-            </div>
-        </div>
+            if (manualMapping[witel]) {
+                district = manualMapping[witel];
+            } else {
+                const words = witel.split(/[\s\/,-]+/);
+                for (let word of words) {
+                    if (word.length >= 2 && manualMapping[word]) {
+                        district = manualMapping[word];
+                        break;
+                    }
+                }
+            }
+            
+            if (district === "UNMAPPED") {
+                if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR") || witel.includes("SINGARAJA")) {
+                    district = "DENPASAR";
+                } else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) {
+                    district = "FLORES";
+                } else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) {
+                    district = "KUPANG";
+                } else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) {
+                    district = "MATARAM";
+                } else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) {
+                    district = "LAMONGAN";
+                } else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) {
+                    district = "MADIUN";
+                } else if (witel.includes("PEKALONGAN") || witel.includes("PKL") || witel.includes("TEGAL") || witel.includes("CIREBON")) {
+                    district = "PEKALONGAN";
+                } else if (witel.includes("YOGYAKARTA") || witel.includes("JOGJA") || witel.includes("DIY")) {
+                    district = "YOGYAKARTA";
+                } else if (witel.includes("PURWOKERTO") || witel.includes("PWT") || witel.includes("BANYUMAS")) {
+                    district = "PURWOKERTO";
+                } else if (witel.includes("MAGELANG")) {
+                    district = "MAGELANG";
+                } else if (witel.includes("SEMARANG") || witel.includes("SMR") || witel.includes("JATENG")) {
+                    district = "SEMARANG";
+                } else if (witel.includes("SURAKARTA") || witel.includes("SOLO")) {
+                    district = "SURAKARTA";
+                }
+            }
+            
+            if (district === "UNMAPPED") {
+                console.log(`🔴 UNMAPPED #${idx+1}: Witel="${originalWitel}" | NoCRA="${row.noCRA}" | Status="${row.status}"`);
+            } else {
+                console.log(`🟢 MAPPED #${idx+1}: Witel="${originalWitel}" -> District="${district}"`);
+            }
+            
+            if (!resume[district]) {
+                resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 };
+            }
+            
+            resume[district].total++;
+            craTotal++;
+            
+            const status = (row.status || "BELUM DIISI").toUpperCase();
+            if (status === "ON SCHEDULE") {
+                resume[district].on++;
+            } else if (status === "CANCEL") {
+                resume[district].cancel++;
+            } else {
+                resume[district].belum++;
+            }
+        });
+    }
+    
+    console.log("========== RESUME SUMMARY ==========");
+    for (let key in resume) {
+        if (resume[key].total > 0) {
+            console.log(`District ${key}: total=${resume[key].total}, on=${resume[key].on}, belum=${resume[key].belum}, cancel=${resume[key].cancel}`);
+        }
+    }
+    
+    if (craTotal > 0) {
+        craResumeText = `Resume CRA\n[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n`;
+        let idx = 1;
         
-        <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center;">
-            <button onclick="clearInput()" style="padding: 12px 35px; background: #f44336; color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <span>🗑️</span> Clear
-            </button>
-            <button onclick="copyResult()" style="padding: 12px 35px; background: #4CAF50; color: white; border: none; border-radius: 50px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <span>📋</span> Copy Hasil
-            </button>
-        </div>
+        for (let district of districtList) {
+            let d = resume[district];
+            craResumeText += `${idx}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`;
+            idx++;
+        }
         
-        <div style="background: #f0f7ff; border-radius: 15px; padding: 20px; border: 2px solid #2196F3;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <span style="background: #2196F3; color: white; padding: 5px 15px; border-radius: 30px; font-size: 13px; font-weight: 600;">📋 HASIL SIAP COPY</span>
-            </div>
-            <div id="telegramResult" style="font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: white; padding: 20px; border-radius: 10px; white-space: pre-wrap; word-break: break-word; border: 1px solid #ccc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                ✨ Hasil format 1 baris akan muncul di sini...
-            </div>
-        </div>
+        let dUnmapped = resume["UNMAPPED"];
+        craResumeText += `${idx}. District UNMAPPED : [ ${dUnmapped.total} | ${dUnmapped.on} | ${dUnmapped.belum} | ${dUnmapped.cancel} ]\n`;
         
-        <div style="margin-top: 20px; padding: 12px 20px; background: #e8f5e9; border-radius: 50px; font-size: 13px; color: #2e7d32; display: inline-block; width: auto;">
-            💡 Paste data, langsung jadi 1 baris siap copy!
-        </div>
-    </div>
-</div>
-
-<div style="height: 10px;"></div>
-
-<!-- ========== SECTION MONITOR TERA > 50% ========== -->
-<div class="monitor-section" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3 style="margin: 0; color: #2c5364;">
-            📡 MONITOR LINK TERA > 50% 
-            <span style="font-size: 12px; background: #27ae60; color: white; padding: 4px 8px; border-radius: 4px; margin-left: 10px;">LIVE</span>
-        </h3>
-        <div>
-            <button class="btn btn-sm btn-success" onclick="copyTeraReport()" style="margin-right: 8px;">
-                📋 Copy Laporan
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="fetchTeraData()">
-                🔄 Refresh
-            </button>
-        </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 12px; opacity: 0.9;">Total Link</div>
-            <div style="font-size: 24px; font-weight: bold;" id="totalLink">0</div>
-        </div>
-        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 12px; opacity: 0.9;">Link > 50%</div>
-            <div style="font-size: 24px; font-weight: bold;" id="totalTera">0</div>
-        </div>
-        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 12px; opacity: 0.9;">Kritis (>90%)</div>
-            <div style="font-size: 24px; font-weight: bold;" id="totalKritis">0</div>
-        </div>
-        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 12px; opacity: 0.9;">Warning (75-90%)</div>
-            <div style="font-size: 24px; font-weight: bold;" id="totalWarning">0</div>
-        </div>
-    </div>
-
-    <div id="teraListContainer" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 8px; padding: 10px;">
-        <div style="text-align: center; padding: 40px; color: #999;">
-            ⏳ Memuat data...
-        </div>
-    </div>
-
-    <div style="margin-top: 10px; font-size: 12px; color: #999; display: flex; justify-content: space-between;">
-        <span id="updateStatus">Terakhir update: -</span>
-        <span>Data real-time dari graph</span>
-    </div>
-</div>
-<div style="height: 10px;"></div>
-
-<!-- ================= CONVERTER ESKALASI ================= -->
-<section class="section" id="eskalasi">
-  <div class="page-title">
-    <h2>🔁 CONVERTER ESKALASI</h2>
-  </div>
-
-  <div class="esk-grid">
-    <div class="esk-box">
-      <h3>DATA A</h3>
-      <textarea id="eskInput"></textarea>
-    </div>
-    <div class="esk-box">
-      <h3>TELEGRAM</h3>
-      <textarea id="eskOutput"></textarea>
-      <button onclick="copyEskalasi()">Copy</button>
-    </div>
-    <div class="esk-box">
-      <h3>WHATSAPP</h3>
-      <textarea id="eskOutputWA"></textarea>
-      <button onclick="copyWA()">Copy</button>
-    </div>
-  </div>
-</section>
-
-<!-- ================= CRA ================= -->
-<section class="cra-section">
-  <div class="cra-header">
-    <h2>📋 CRA</h2>
-    <div class="cra-stats-cards">
-      <div class="cra-stat-card reg5-card">
-        <span class="cra-stat-label">REG 5</span>
-        <span class="cra-stat-number" id="craReg5Count">0</span>
-      </div>
-      <div class="cra-stat-card reg4-card">
-        <span class="cra-stat-label">REG 4</span>
-        <span class="cra-stat-number" id="craReg4Count">0</span>
-      </div>
-      <div class="cra-stat-card total-card">
-        <span class="cra-stat-label">TOTAL CRA</span>
-        <span class="cra-stat-number" id="craTotalCount">0</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="cra-actions">
-    <label class="upload-box">
-      <input type="file" id="craFile" hidden />
-      <span>📂 Upload CRA</span>
-    </label>
-    <button id="btnExportCRA" class="btn primary">📊 Export Excel</button>
-    <button id="btnExportTXT" class="btn dark">📝 Export TXT</button>
-    <button id="btnExportTXTAmel" class="btn dark">📝 Export TXT Permintaan Bu Amel</button>
-    <button id="btnResumeCRA" class="btn dark">Resume CRA</button>
-  </div>
-
+        let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
+        for (let key in resume) {
+            totalAll += resume[key].total;
+            totalOn += resume[key].on;
+            totalBelum += resume[key].belum;
+            totalCancel += resume[key].cancel;
+        }
+        
+        craResumeText += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]\n`;
+        craResumeText += `\nKeterangan :\nBelum = PIC Drafter belum checklist GDOC TIOC\nNOK/Cancel = PIC Drafter sudah menyelesaikan CRA sebelumnya`;
+    } else {
+        craResumeText = "Tidak ada data CRA";
+    }
+    
+    const report = `EXECUTIVE REPORT
+EVP Area III Bpk Deddy Suhendry
+Kami laporkan kondisi layanan dan lainnya di TIF3-JBN sebagai berikut :
+${hari}
+Pukul : ${jam}
   
-  <!-- TAMBAHAN CHECKBOX FILTER REGIONAL DENGAN STATISTIK MINI -->
-<div class="cra-filter" style="margin: 15px 0; padding: 12px 20px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 16px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid rgba(203, 213, 225, 0.5);">
-  <span style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 6px;">
-    <span style="font-size: 18px;">🎯</span> Filter Regional:
-  </span>
-  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 14px; background: white; border-radius: 40px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#e6f7e6'" onmouseout="this.style.background='white'">
-    <input type="checkbox" id="filterReg5" style="width: 18px; height: 18px; cursor: pointer; accent-color: #22c55e;"> 
-    <span style="font-weight: 500; color: #166534;">REG 5 AJA</span>
-  </label>
-  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 14px; background: white; border-radius: 40px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='white'">
-    <input type="checkbox" id="filterReg4" style="width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444;"> 
-    <span style="font-weight: 500; color: #991b1b;">REG 4 AJA</span>
-  </label>
+I. EXECUTIVE SUMMARY
+A. Secara umum, Infrastructure dan Service berfungsi secara normal.
+B. GANGGUAN INFRASTRUKTUR :
+1. IP Backbone : ${ipCount === 0 ? "Nihil" : ipCount + " Tiket"}
+2. Transport Backbone : ${transportCount === 0 ? "Nihil" : transportCount + " Tiket"}
+
+C. KEJADIAN/KEGIATAN PENTING :
+1. Bencana Alam : ${STATIC_REPORT_DATA.bencanaAlam}
+2. Event Penting : ${STATIC_REPORT_DATA.eventPenting}
+
+II. INFRASTRUCTURE
+A. IP Backbone : ${ipText}
+B. TRANSPORT BACKBONE : ${transportText}
+C. OSASE : ${STATIC_REPORT_DATA.osase}
+D. REPORT CME : 
+
+${cmeTable}
+
+E. NE AKSES : ${neText}
+
+F. GAMAS FEEDER, DISTRIBUSI, ODP : 
+- FEEDER : ${feederText}
+- DISTRIBUSI : ${distribusiText}
+- ODP : ${odpText}
+
+G. PE SERVICE :
+-  PE HSI     : ${STATIC_REPORT_DATA.peService.hsi}
+-  PE TRANSIT : ${STATIC_REPORT_DATA.peService.transit}
+-  PE VPN     : ${STATIC_REPORT_DATA.peService.vpn}
+
+H. Gamas Network : ${STATIC_REPORT_DATA.gamasNetwork}
+I. UTILISASI
+${utilisasiText}
+
+III. STATUS SERVICE
+A. INTERNET : ${STATIC_REPORT_DATA.internet}
+B. USEETV : ${STATIC_REPORT_DATA.useetv}
+C. VOICE : ${STATIC_REPORT_DATA.voice}
+
+IV. SIAGA BANJIR (Kondisi STO Terdampak Banjir)
+TReg5 : ${STATIC_REPORT_DATA.banjir.districtCount} District | ${STATIC_REPORT_DATA.banjir.stoCount} STO | ${STATIC_REPORT_DATA.banjir.terdampak} STO Terdampak Banjir
   
-  <!-- DIVIDER VERTICAL -->
-  <div style="width: 1px; height: 30px; background: linear-gradient(to bottom, transparent, #cbd5e1, transparent); margin: 0 8px;"></div>
-  
-  <!-- STATISTIK MINI -->
-  <div id="craMiniStats" style="display: flex; gap: 12px; margin-left: auto; align-items: center;">
-    <div class="cra-stat-mini on-schedule" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: #dcfce7; border-radius: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
-      <span style="font-size: 16px;">✅</span>
-      <span style="font-weight: 500; color: #166534;">ON SCHEDULE :</span>
-      <span id="miniOnSchedule" style="font-weight: 700; color: #14532d; background: #bbf7d0; padding: 2px 10px; border-radius: 30px; min-width: 35px; text-align: center;">0</span>
-    </div>
-    <div class="cra-stat-mini cancel" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: #fee2e2; border-radius: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
-      <span style="font-size: 16px;">❌</span>
-      <span style="font-weight: 500; color: #991b1b;">CANCEL :</span>
-      <span id="miniCancel" style="font-weight: 700; color: #7f1d1d; background: #fecaca; padding: 2px 10px; border-radius: 30px; min-width: 35px; text-align: center;">0</span>
-    </div>
-    <div class="cra-stat-mini belum" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: #fed7aa; border-radius: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
-      <span style="font-size: 16px;">⏳</span>
-      <span style="font-weight: 500; color: #9a3412;">BELUM DIISI :</span>
-      <span id="miniBelum" style="font-weight: 700; color: #7c2d12; background: #fed7aa; padding: 2px 10px; border-radius: 30px; min-width: 35px; text-align: center;">0</span>
-    </div>
-  </div>
-</div>
+V. KEGIATAN TERENCANA (CRA) : ${craTotal} KEGIATAN
 
-  <div class="cra-table-wrap">
-    <table id="craTable">
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Status</th>
-          <th>No CRA</th>
-          <th>Judul</th>
-          <th>Lokasi</th>
-          <th>Witel</th>
-          <th>Regional</th>
-          <th>PIC</th>
-          <th>Tanggal</th>
-          <th>Waktu</th>
-          <th>CRQ</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  
-  <div id="resumeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
-    <div style="background:#fff; width:500px; max-width:90%; padding:20px; border-radius:8px;">
-      <h3>Resume CRA</h3>
-      <textarea id="resumeText" style="width:100%; height:250px; margin-bottom:10px; resize:none;"></textarea>
-      <div style="text-align:right;">
-        <button id="copyResume">Copy</button>
-        <button id="closeResume">Close</button>
-      </div>
-    </div>
-  </div>
-</section>
+${craResumeText}
 
-<footer class="app-footer">
-  <div class="footer-center">
-    <div class="footer-text">
-      © 2026–2027 <strong>Soekma Properti</strong>
-    </div>
-    <div class="footer-icons">
-      <a href="#" class="footer-icon wa" title="WhatsApp">
-        <svg viewBox="0 0 24 24">
-          <path d="M20.5 3.5A11.9 11.9 0 0012 0 12 12 0 002.2 18.3L0 24l5.9-2.1A12 12 0 1020.5 3.5z"/>
-        </svg>
-      </a>
-      <a href="#" class="footer-icon ig" title="Instagram">
-        <svg viewBox="0 0 24 24">
-          <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 5.5A4.5 4.5 0 1016.5 12 4.5 4.5 0 0012 7.5z"/>
-        </svg>
-      </a>
-      <a href="#" class="footer-icon x" title="X">
-        <svg viewBox="0 0 24 24">
-          <path d="M18.9 2H22l-7.1 8.1L23 22h-6.4l-5-6.3L6 22H3l7.6-8.7L1 2h6.6l4.5 5.7z"/>
-        </svg>
-      </a>
-    </div>
-  </div>
-</footer>
+REPORT INTERNAL TELKOM DILARANG DISEBARLUASKAN KE LUAR TELKOM
 
-<div class="watermark">SOEKMA PROPERTI</div>
+Contact Center:
+Free Call : 0800-1-353000
+TSEL : 0811-3081-500`;
 
-<!-- SheetJS for Excel -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    currentExecutiveReport = report;
+    
+    const reportContent = document.getElementById('executiveReportContent');
+    if (reportContent) {
+        reportContent.textContent = report;
+    }
+}
 
-</body>
-</html>
+// ================= COPY EXECUTIVE REPORT =================
+function copyExecutiveReport() {
+    if (!currentExecutiveReport) {
+        alert("Belum ada laporan yang di-generate. Pilih shift terlebih dahulu!");
+        return;
+    }
+    
+    navigator.clipboard.writeText(currentExecutiveReport).then(() => {
+        alert("✅ Executive Report berhasil di-copy!");
+    }).catch(() => {
+        alert("❌ Gagal menyalin report");
+    });
+}
+
+// ================= DOWNLOAD EXECUTIVE REPORT =================
+function downloadExecutiveReport() {
+    if (!currentExecutiveReport) {
+        alert("Belum ada laporan yang di-generate. Pilih shift terlebih dahulu!");
+        return;
+    }
+    
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+    const blob = new Blob([currentExecutiveReport], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EXECUTIVE_REPORT_${timestamp}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+document.getElementById("executiveReportBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("executiveModal");
+    if (modal) {
+        modal.style.display = "flex";
+        
+        // SCROLL HALAMAN KE POSISI MODAL
+        modal.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+        
+        const reportContent = document.getElementById('executiveReportContent');
+        if (reportContent) {
+            reportContent.textContent = "Pilih shift laporan di atas untuk menghasilkan Executive Report...";
+        }
+        currentExecutiveReport = "";
+    }
+});
+
+document.getElementById("closeExecutiveModal")?.addEventListener("click", () => {
+    const modal = document.getElementById("executiveModal");
+    if (modal) modal.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+    const modal = document.getElementById("executiveModal");
+    if (e.target === modal) {
+        modal.style.display = "none";
+    }
+});
+
+// ================= FUNGSI KONVERSI DURASI =================
+function formatDurasi(ttrEndToEnd) {
+    if (!ttrEndToEnd || ttrEndToEnd === '' || ttrEndToEnd === '00:00:00') return '-';
+    
+    const parts = ttrEndToEnd.split(':');
+    if (parts.length === 3) {
+        const jam = parseInt(parts[0]);
+        const menit = parseInt(parts[1]);
+        
+        if (jam > 0 && menit > 0) {
+            return `${jam} Jam ${menit} Menit`;
+        } else if (jam > 0) {
+            return `${jam} Jam`;
+        } else if (menit > 0) {
+            return `${menit} Menit`;
+        }
+        return `${jam} Jam ${menit} Menit`;
+    }
+    return ttrEndToEnd;
+}
+
+// ================= LOAD WORKZONES =================
+async function loadWorkzones() {
+    console.log("🟢 loadWorkzones() DIPANGGIL");
+    const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1zzLfkuctrLA3dvesis1ZJi1-eC8eIQy_h0OV8K5nI6f2dPcOc2g9NC5NUAgQer7i-iM6mqTE_KQv/pub?output=csv';
+    
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        
+        DB_JATIM.clear();
+        DB_BALNUS.clear();
+        DB_REG4.clear();
+        
+        lines.forEach(line => {
+            const cols = line.split(',').map(s => s.trim().toUpperCase());
+            const jatim = cols[0];
+            const balnus = cols[1];
+            const reg4 = cols[2];
+            
+            if (jatim && jatim !== "DB_JATIM") DB_JATIM.add(jatim);
+            if (balnus && balnus !== "DB_BALNUS") DB_BALNUS.add(balnus);
+            if (reg4 && reg4 !== "REG_4") DB_REG4.add(reg4);
+        });
+        
+        console.log("✅ Workzone loaded:", { 
+            JATIM: DB_JATIM.size, 
+            BALNUS: DB_BALNUS.size,
+            REG_4: DB_REG4.size 
+        });
+    } catch (err) {
+        console.error('Gagal load workzones:', err);
+    }
+}
+
+// ================= LOAD PIC MAPPING =================
+async function loadPICMapping() {
+    const url = "LINK_CSV_GOOGLE_SHEET_PIC_KAMU";
+
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        lines.shift();
+
+        lines.forEach(line => {
+            const cols = line.split(",");
+            const witel = cols[0]?.trim().toUpperCase();
+            const pic = cols[1]?.trim();
+            if (witel) PIC_DB[witel] = pic;
+        });
+    } catch (err) {
+        console.error("Gagal load PIC mapping:", err);
+    }
+}
+
+// ================= LOAD DISTRICT MAPPING =================
+async function loadDistrictMapping() {
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT730gBi8fU16gEo6ZmE3d5MQw5Xh2isbMeoI4SM-BfyP2uK8sL85skV70jW83vdXJAuhPF0JxS3OS7/pub?output=csv";
+
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+        
+        window.DISTRICT_DB = {};
+        const uniqueDistricts = new Set();
+        
+        lines.forEach((line) => {
+            const [district, witel] = line.split(',').map(s => s.trim().toUpperCase());
+            
+            if (district && witel && district !== "DISTRICT" && witel !== "WITEL") {
+                uniqueDistricts.add(district);
+                window.DISTRICT_DB[witel] = district;
+                window.DISTRICT_DB[witel.replace(/\s+/g, '')] = district;
+                
+                if (witel.length <= 5 && !witel.includes(' ')) {
+                    window.DISTRICT_DB[witel] = district;
+                }
+                
+                if (witel.includes(' ')) {
+                    const parts = witel.split(' ');
+                    parts.forEach(part => {
+                        if (part.length >= 3) {
+                            window.DISTRICT_DB[part] = district;
+                        }
+                    });
+                }
+            }
+        });
+        
+        window.UNIQUE_DISTRICTS = Array.from(uniqueDistricts).sort();
+        console.log("✅ DISTRICT_DB loaded:", Object.keys(window.DISTRICT_DB).length, "entries");
+    } catch (err) {
+        console.error("❌ Gagal load district:", err);
+        loadDistrictMappingFallback();
+    }
+}
+
+function loadDistrictMappingFallback() {
+    console.log("📋 Using fallback district mapping");
+    const districts = [
+        "DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER",
+        "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA"
+    ];
+    
+    window.UNIQUE_DISTRICTS = districts;
+    window.DISTRICT_DB = {};
+    
+    const fallbackMapping = {
+        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+        "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+        "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+        "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+        "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG",
+        "TULUNGAGUNG": "MALANG", "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO",
+        "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+        "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER",
+        "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER",
+        "PROBOLINGGO": "JEMBER", "MDN": "MADIUN", "MADIUN": "MADIUN",
+        "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN",
+        "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN",
+        "TRENGGALEK": "MADIUN", "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN",
+        "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+        "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR",
+        "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR",
+        "KARANGASEM": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR",
+        "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR",
+        "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES", "LABUAN BAJO": "FLORES",
+        "KUPANG": "KUPANG", "TIMOR": "KUPANG", "SUMBA": "KUPANG", "NTT": "KUPANG",
+        "MATARAM": "MATARAM", "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM", "NTB": "MATARAM"
+    };
+    
+    window.DISTRICT_DB = fallbackMapping;
+}
+
+// ================= LOAD NOP DATABASE (khusus BALNUS) =================
+async function loadNOPDatabase() {
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSTBHJ-S5KYC1Z8zSbgbhIkoIefPRDv3aggjxHO09NyF4nrMmIR2MsTr7DZAYJ8-nf46VQCrKm2aIxg/pub?output=csv";
+    
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        
+        NOP_DB = {};
+        
+        lines.forEach((line, idx) => {
+            if (idx === 0) return; // skip header
+            const cols = line.split(',').map(s => s.trim().toUpperCase());
+            const dbCode = cols[0];
+            const dbCity = cols[1];
+            const dbNop = cols[2];
+            
+            if (dbCode && dbNop) {
+                NOP_DB[dbCode] = dbNop;
+                if (dbCity) NOP_DB[dbCity] = dbNop;
+            }
+        });
+        
+        console.log("✅ NOP Database loaded:", Object.keys(NOP_DB).length, "entries");
+    } catch (err) {
+        console.error("❌ Gagal load NOP database:", err);
+    }
+}
+
+// ================= CSV PARSER =================
+function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, '');
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) return [];
+
+    let delimiter = ',';
+    if (lines[0].includes(';')) delimiter = ';';
+    else if (lines[0].includes('\t')) delimiter = '\t';
+
+    const parseLine = (line) => {
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            const next = line[i + 1];
+
+            if (c === '"' && next === '"' && inQuotes) {
+                cur += '"';
+                i++;
+            } else if (c === '"') {
+                inQuotes = !inQuotes;
+            } else if (c === delimiter && !inQuotes) {
+                result.push(cur);
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        result.push(cur);
+        return result.map(v => v.trim());
+    };
+
+    const headers = parseLine(lines.shift());
+
+    return lines.map(line => {
+        const cols = parseLine(line);
+        const o = {};
+        headers.forEach((h, i) => {
+            o[h] = cols[i] ?? '';
+        });
+        return o;
+    });
+}
+
+// ================= FILE CSV =================
+document.getElementById("fileInput")?.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const fileNameSpan = document.getElementById("fileName");
+    if (fileNameSpan) fileNameSpan.textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        ALL_DATA = parseCSV(reader.result);
+        applyFilters();
+    };
+    reader.readAsText(file);
+});
+
+// ================= RENDER DATA =================
+function renderData(data) {
+    console.log("🟢 renderData() DIPANGGIL, data length:", data.length);
+    const jatimBox = document.querySelector("#jatim .content");
+    const balnusBox = document.querySelector("#balnus .content");
+    const reg4Box = document.querySelector("#reg4 .content");
+    
+    jatimBox.innerHTML = "";
+    balnusBox.innerHTML = "";
+    if (reg4Box) reg4Box.innerHTML = "";
+
+    let total = 0;
+    let bb = 0, ip = 0;
+    let d = 0, f = 0, g = 0;
+    let noJ = 1, noB = 1, noReg4 = 1;
+
+    data.forEach(row => {
+        const summary = row["SUMMARY"] || "";
+        const update = row["WORKLOG SUMMARY"] || "-";
+        const zone = (row["WORKZONE"] || "").toUpperCase();
+        const ttr = row["TTR END TO END"] || "";
+        const durasiFormatted = formatDurasi(ttr);
+        
+        total++;
+
+        if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) bb++;
+        if (summary.includes("(REPAIR) IP T3") || summary.includes("(RECOVERY) IP T3")) ip++;
+        if (summary.includes("DISTRIBUSI")) d++;
+        if (summary.includes("FEEDER")) f++;
+        if (summary.includes("GPON")) g++;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        const cardContent = `${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
+        
+        if (summary.includes("GAMAS R4") || summary.toUpperCase().includes("GAMAS R4")) {
+            card.innerHTML = `<b>${noReg4++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+            if (reg4Box) reg4Box.appendChild(card);
+        } else if (DB_REG4.has(zone)) {
+            card.innerHTML = `<b>${noReg4++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+            if (reg4Box) reg4Box.appendChild(card);
+        } else if (DB_JATIM.has(zone)) {
+            card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+            jatimBox.appendChild(card);
+        } else if (DB_BALNUS.has(zone)) {
+            card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+            card.dataset.workzone = zone;  // TAMBAHKAN: simpan workzone untuk NOP mapping
+            balnusBox.appendChild(card);
+        }
+    });
+
+    document.getElementById("totalCount").textContent = `TOTAL : ${total}`;
+    document.getElementById("bbCount").textContent = `BB : ${bb}`;
+    document.getElementById("ipCount").textContent = `IP : ${ip}`;
+    document.getElementById("gponCount").textContent = `GPON : ${g}`;
+    document.getElementById("feederCount").textContent = `FEEDER : ${f}`;
+    document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
+
+    renderStatusBadges(data);
+	
+	// JUMLAH GAMAS
+	updateRegionStats(data);
+    
+    if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
+    if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
+    if (reg4Box && !reg4Box.children.length) reg4Box.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
+}
+
+const STATUS_LIST = ['New', 'Draft', 'Analysis', 'Pending', 'Backend', 'FinalCheck', 'Resolved', 'Mediacare', 'Salamsim', 'Closed'];
+
+function renderStatusFilter() {
+    const box = document.getElementById('statusFilterBox');
+    if (!box) return;
+
+    box.innerHTML = '';
+
+    STATUS_LIST.forEach(status => {
+        const label = document.createElement('label');
+        label.style.marginRight = '10px';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = status;
+
+        checkbox.addEventListener('change', () => {
+            ACTIVE_STATUSES = Array.from(box.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            applyFilters();
+        });
+
+        label.appendChild(checkbox);
+        label.append(` ${status}`);
+        box.appendChild(label);
+    });
+}
+
+function applyFilters() {
+    let data = [...ALL_DATA];
+
+    if (ACTIVE_STATUSES.length > 0) {
+        data = data.filter(row => ACTIVE_STATUSES.map(s => s.toUpperCase()).includes((row['STATUS'] || '').toUpperCase()));
+    }
+
+    const keyword = document.getElementById("searchInput")?.value.trim();
+    if (keyword) {
+        const incList = keyword.split(',').map(i => i.trim().toUpperCase()).filter(Boolean);
+        data = data.filter(row => incList.includes((row["INCIDENT"] || "").toUpperCase()));
+    }
+
+    currentData = data;
+    renderData(currentData);
+}
+
+// ================= EXPORT LAPORAN GAMAS DM =================
+function exportLaporanGamasDM(data) {
+    console.log("Data received:", data.length);
+    
+    const filteredData = data.filter(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        return summary.includes("FEEDER") || summary.includes("DISTRIBUSI") || summary.includes("ODP");
+    });
+
+    if (filteredData.length === 0) {
+        alert("Tidak ada data FEEDER, DISTRIBUSI, atau ODP dalam file ini.");
+        return;
+    }
+
+    const feeder = [];
+    const distribusi = [];
+    const odp = [];
+
+    filteredData.forEach(row => {
+        const summary = (row["SUMMARY"] || "").toUpperCase();
+        if (summary.includes("FEEDER")) feeder.push(row);
+        else if (summary.includes("DISTRIBUSI")) distribusi.push(row);
+        else if (summary.includes("ODP")) odp.push(row);
+    });
+
+    let output = "F. GAMAS FEEDER, DISTRIBUSI, ODP : \n\n";
+    output += `- FEEDER : ${feeder.length} Tiket\n`;
+    if (feeder.length > 0) feeder.forEach((row, idx) => output += formatGamasRow(row, idx + 1));
+    else output += "  Nihil\n";
+    output += "\n";
+    
+    output += `- DISTRIBUSI : ${distribusi.length} Tiket\n`;
+    if (distribusi.length > 0) distribusi.forEach((row, idx) => output += formatGamasRow(row, idx + 1));
+    else output += "  Nihil\n";
+    output += "\n";
+    
+    output += `- ODP : ${odp.length} Tiket\n`;
+    if (odp.length > 0) odp.forEach((row, idx) => output += formatGamasRow(row, idx + 1));
+    else output += "  Nihil\n";
+
+    showGamasModal(output);
+}
+
+function formatGamasRow(row, index) {
+    const incident = row["INCIDENT"] || "-";
+    const summary = row["SUMMARY"] || "";
+    const worklog = row["WORKLOG SUMMARY"] || "-";
+    const ttrEndToEnd = row["TTR END TO END"] || "00:00:00";
+    
+    const parts = summary.split('|').map(p => p.trim());
+    const sqmGamas = parts[0] || "[SQM GAMAS]";
+    const akses = parts[1] || "AKSES";
+    const jenis = parts[2] || "";
+    const tif = parts[3] || "TIF-3";
+    const reg5 = parts[4] || "REG-5";
+    const penyebab = parts[5] || "";
+    const perbaikan = parts[6] || "";
+    const lokasiJenis = parts[7] || "";
+    const lokasi = parts[8] || "";
+    const estimasi = parts[9] || "";
+    
+    const odcMatch = summary.match(/\[(ODC[^\]]+)\]/);
+    const odcList = odcMatch ? odcMatch[1] : "";
+    const odpMatches = summary.match(/\[(ODP[^\]]+)\]/g);
+    const odpList = odpMatches && odpMatches.length > 0 ? odpMatches[0] : "";
+    const picMatch = summary.match(/\(PIC ([^)]+)\)/);
+    const pic = picMatch ? picMatch[1] : "";
+    const iboosterMatch = summary.match(/(Ibooster[^\s]+)/);
+    const ibooster = iboosterMatch ? iboosterMatch[1] : "";
+    
+    let durationFormatted = ttrEndToEnd;
+    if (ttrEndToEnd && ttrEndToEnd !== "00:00:00") {
+        const timeParts = ttrEndToEnd.split(':');
+        if (timeParts.length === 3) {
+            const hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
+            if (hours > 0 && minutes > 0) durationFormatted = `${hours} jam ${minutes} Menit`;
+            else if (hours > 0) durationFormatted = `${hours} jam`;
+            else if (minutes > 0) durationFormatted = `${minutes} Menit`;
+            else durationFormatted = `${timeParts[2]} Detik`;
+        }
+    }
+    
+    return `${index}. ${incident} ${sqmGamas} | ${akses} | ${jenis} | ${tif} | ${reg5} | ${penyebab} | ${perbaikan} | ${lokasiJenis} | ${lokasi} | (${estimasi}) | [${odcList}] | Datek ODP Terdampak : [${odpList}] | (PIC ${pic}) | ${ibooster}\n` +
+        `Update : ${worklog}\n` +
+        `Duration downtime : ${durationFormatted}\n\n` +
+        `Impacted Service :\nNODEB : 0\nBROADBAND : 0\nEBIS : 0\nWIFI : 0\n\n` +
+        `Pelanggan Terganggu :\nNODEB : 0\nBROADBAND : 0\nEBIS : 0\nWIFI : 0\n\n`;
+}
+
+function showGamasModal(text) {
+    let modal = document.getElementById("gamasModal");
+    
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "gamasModal";
+        modal.style.cssText = `display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 900px; max-height: 80vh; z-index: 9999;`;
+        modal.innerHTML = `<div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">LAPORAN GAMAS DM</h3>
+                <button id="closeGamasTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b;">&times;</button>
+            </div>
+            <textarea id="gamasText" style="width:100%; height:400px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;"></textarea>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button id="copyGamas" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer;">📋 Copy</button>
+                <button id="downloadGamas" style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:10px; cursor:pointer;">📥 Download</button>
+                <button id="closeGamas" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer;">✕ Close</button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+        
+        const overlay = document.createElement("div");
+        overlay.id = "gamasOverlay";
+        overlay.style.cssText = `display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 9998;`;
+        document.body.appendChild(overlay);
+        
+        document.getElementById("copyGamas").addEventListener("click", () => {
+            navigator.clipboard.writeText(document.getElementById("gamasText").value);
+            alert("Laporan berhasil di-copy!");
+        });
+        document.getElementById("downloadGamas").addEventListener("click", () => {
+            const text = document.getElementById("gamasText").value;
+            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `LAPORAN_GAMAS_DM_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        
+        const closeModal = () => {
+            modal.style.display = "none";
+            overlay.style.display = "none";
+        };
+        document.getElementById("closeGamas").addEventListener("click", closeModal);
+        document.getElementById("closeGamasTop").addEventListener("click", closeModal);
+        overlay.addEventListener("click", closeModal);
+    }
+    
+    document.getElementById("gamasText").value = text;
+    modal.style.display = "block";
+    document.getElementById("gamasOverlay").style.display = "block";
+}
+
+document.getElementById("exportExcel")?.addEventListener("click", () => {
+    if (!ALL_DATA.length) { 
+        alert("Silahkan upload file CSV terlebih dahulu!"); 
+        return; 
+    }
+    exportLaporanGamasDM(ALL_DATA);
+});
+
+function renderStatusBadges(data) {
+    const box = document.getElementById('statusBadges');
+    if (!box) return;
+    box.innerHTML = '';
+    
+    STATUS_LIST.forEach(status => {
+        const count = data.filter(row => (row['STATUS'] || '').toUpperCase() === status.toUpperCase()).length;
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = `${status} : ${count}`;
+        box.appendChild(badge);
+    });
+}
+
+document.getElementById("btnSearch")?.addEventListener("click", () => applyFilters());
+document.getElementById("themeToggle")?.addEventListener("click", () => document.body.classList.toggle("light"));
+
+// ================= COPY COLUMN DENGAN NOP UNTUK BALNUS =================
+function copyColumn(type) {
+    const box = document.querySelector(`#${type} .content`);
+    if (!box || !box.children.length) { 
+        alert('Tidak ada data untuk di-copy'); 
+        return; 
+    }
+    
+    let text = '';
+    
+    if (type === 'balnus') {
+        // Format khusus BALNUS dengan pengelompokan NOP
+        text = formatBalnusWithNOP(box);
+    } else {
+        // Format biasa untuk JATIM dan REG4
+        box.querySelectorAll('.card').forEach(card => { 
+            text += card.innerText.trim() + '\n\n'; 
+        });
+    }
+    
+    navigator.clipboard.writeText(text.trim()).then(() => alert(`Data ${type.toUpperCase()} berhasil di-copy`));
+}
+
+function formatBalnusWithNOP(box) {
+    const cards = Array.from(box.querySelectorAll('.card'));
+    const grouped = {};
+    
+    cards.forEach(card => {
+        const workzone = card.dataset.workzone || '';
+        // Cari NOP berdasarkan workzone
+        let nop = 'LAINNYA';
+        const upperWorkzone = workzone.toUpperCase();
+        
+        if (NOP_DB[upperWorkzone]) {
+            nop = NOP_DB[upperWorkzone];
+        } else {
+            // Coba cari dengan partial match
+            for (const [key, value] of Object.entries(NOP_DB)) {
+                if (upperWorkzone.includes(key) || key.includes(upperWorkzone)) {
+                    nop = value;
+                    break;
+                }
+            }
+        }
+        
+        if (!grouped[nop]) grouped[nop] = [];
+        grouped[nop].push(card.innerText.trim());
+    });
+    
+    // Urutkan NOP secara alfabetis
+    const sortedNops = Object.keys(grouped).sort();
+    
+    let result = '';
+    for (const nop of sortedNops) {
+        result += `#NOP ${nop} :\n`;
+        grouped[nop].forEach((item, idx) => {
+            // Hapus nomor urut awal dari item (karena akan diganti)
+            let cleanItem = item.replace(/^\d+\.\s*/, '');
+            result += `${idx + 1}. ${cleanItem}\n\n`;
+        });
+        result += '\n';
+    }
+    
+    return result;
+}
+
+// ================= GAMAS CONVERTER =================
+function parseGamasTelegram(text) {
+    let data = { datek: '-', sto: '-', witel: '-', penyebab: '-', estimasi: '4', slot: '-', pic: '-', odp: [] };
+    
+    const stoMatch = text.match(/STO\s*:?\s*([^\n]+)/i);
+    if (stoMatch) data.sto = stoMatch[1].trim();
+    
+    const datekMatch = text.match(/Datek\s*:?\s*([^\n]+)/i);
+    if (datekMatch) data.datek = datekMatch[1].trim();
+    
+    const penyebabMatch = text.match(/Penyebab\s*:?\s*([^\n]+)/i);
+    if (penyebabMatch) data.penyebab = penyebabMatch[1].trim();
+    
+    const estimasiMatch = text.match(/Estimasi\s*:?\s*(\d+)/i);
+    if (estimasiMatch) data.estimasi = estimasiMatch[1];
+    
+    const slotMatch = text.match(/Slot.*?port.*?(GPON[^\n]+)/i);
+    if (slotMatch) data.slot = slotMatch[1].trim();
+    
+    const picMatch = text.match(/\(([^)]*(?:PAK|pak|Pic|PIC|pic)[^)]*)\)/i);
+    if (picMatch) {
+        data.pic = picMatch[1].trim();
+    } else {
+        const namaMatch = text.match(/Nama\s*\/\s*NIK\s*pelapor\s*:?\s*([^\n]+)/i);
+        if (namaMatch) {
+            let picText = namaMatch[1].trim();
+            if (picText.includes('/')) picText = picText.split('/')[1]?.trim() || picText.split('/')[0]?.trim();
+            data.pic = picText;
+        }
+    }
+    
+    const odpRegex = /(ODP-[^\s,]+)/g;
+    let match;
+    while ((match = odpRegex.exec(text)) !== null) data.odp.push(match[1]);
+    
+    const jam = parseInt(data.estimasi) || 4;
+    const estTime = new Date();
+    estTime.setHours(estTime.getHours() + jam);
+    const estStr = `${estTime.getDate().toString().padStart(2,'0')}/${(estTime.getMonth()+1).toString().padStart(2,'0')}/${estTime.getFullYear()} ${estTime.getHours().toString().padStart(2,'0')}:00`;
+    
+    return `GAMAS | AKSES | DISTRIBUSI | TIF-3 | REG-5 | ${data.penyebab} | PERBAIKAN | ${data.datek} | ${data.sto} | (EST ${estStr}) | ${data.slot} | (${data.pic})`;
+}
+
+function autoConvertGamas() {
+    const input = document.getElementById('telegramData');
+    const result = document.getElementById('telegramResult');
+    const statusSpan = document.getElementById('statusIndicator');
+    
+    if (!input || !result) return;
+    
+    const text = input.value.trim();
+    if (!text) {
+        result.innerHTML = '✨ Hasil format akan muncul di sini...';
+        if(statusSpan) statusSpan.innerHTML = '⏳ Menunggu input...';
+        return;
+    }
+    
+    if(statusSpan) statusSpan.innerHTML = '⚡ Memproses...';
+    
+    try {
+        result.innerHTML = parseGamasTelegram(text);
+        result.style.background = '#ffffff';
+        if(statusSpan) statusSpan.innerHTML = '✅ Selesai!';
+    } catch(e) {
+        result.innerHTML = `❌ Error: ${e.message}`;
+        if(statusSpan) statusSpan.innerHTML = '❌ Error';
+    }
+}
+
+function copyResult() {
+    const result = document.getElementById('telegramResult');
+    if (!result) return;
+    
+    const text = result.innerText;
+    if (text.includes('✨') || text.includes('❌')) { 
+        alert('Belum ada hasil yang bisa di-copy!'); 
+        return; 
+    }
+    
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ Hasil tersalin!');
+        result.style.background = '#f0fff0';
+        setTimeout(() => result.style.background = '#ffffff', 200);
+    }).catch(() => alert('❌ Gagal menyalin'));
+}
+
+function clearInput() {
+    document.getElementById('telegramData').value = '';
+    document.getElementById('telegramResult').innerHTML = '✨ Hasil format akan muncul di sini...';
+    document.getElementById('statusIndicator').innerHTML = '⏳ Menunggu input...';
+}
+
+// ================= ESKALASI =================
+function cleanText(t) { 
+    return t.replace(/\r/g, '').replace(/\t/g, ' ').replace(/[ ]{2,}/g, ' ').trim(); 
+}
+
+function pickBetween(text, start, end) { 
+    const s = text.indexOf(start); 
+    if (s === -1) return "-"; 
+    const from = s + start.length; 
+    if (!end) return text.substring(from).trim(); 
+    const e = text.indexOf(end, from); 
+    return (e === -1 ? text.substring(from) : text.substring(from, e)).trim(); 
+}
+
+function formatMultiLineBlock(text) { 
+    if (!text || text === '-') return '-'; 
+    return text.replace(/NODEB\s*:?\s*(\d+)/i, 'NODEB $1')
+               .replace(/BROADBAND\s*:?\s*(\d+)/i, '\nBROADBAND $1')
+               .replace(/EBIS\s*:?\s*(\d+)/i, '\nEBIS $1')
+               .replace(/WIFI\s*:?\s*(\d+)/i, '\nWIFI $1').trim(); 
+}
+
+function cleanCC(text) { 
+    return text.split('Surveillance')[0].split('REPORT INTERNAL')[0].split('Contact Center')[0].trim(); 
+}
+
+function formatAction(text) { 
+    return text.replace(/(\d{2}:\d{2}\sWIB\s:)/g, '\n$1').trim(); 
+}
+
+function convertEskalasi() { 
+    convertTelegram(); 
+    convertWhatsApp(); 
+}
+
+function extractROCName(raw) { 
+    const m = raw.match(/Surveillance\s+ROC5\s*[-–]\s*([A-Za-z ]+?)(?:\*|\n|REPORT|$)/i); 
+    return m ? m[1].trim() : '-'; 
+}
+
+function convertTelegram() {
+    const raw = cleanText(document.getElementById('eskInput').value);
+    const result = `Kepada : ${pickBetween(raw,'Kepada :','*Current status')}
+Current status : ${pickBetween(raw,'Current status :','Nomor Tiket')}
+Nomor Tiket : ${pickBetween(raw,'Nomor Tiket :','NE')}
+
+NE: ${pickBetween(raw,'NE:','LOKASI')}
+LOKASI : ${pickBetween(raw,'LOKASI :','Urgency')}
+Urgency : ${pickBetween(raw,'Urgency :','Start Time')}
+
+Start Time : ${pickBetween(raw,'Start Time :','End Time')}
+End Time : ${pickBetween(raw,'End Time :','Duration Time')}
+Duration Time : ${pickBetween(raw,'Duration Time :','Headline')}
+
+Headline : ${pickBetween(raw,'Headline :','*Impacted Service')}
+
+*Impacted Service* :
+${formatMultiLineBlock(pickBetween(raw,'*Impacted Service* :','*Pelanggan Terganggu* :'))}
+
+*Pelanggan Terganggu* :
+${formatMultiLineBlock(pickBetween(raw,'*Pelanggan Terganggu* :','Perangkat Terganggu'))}
+
+Perangkat Terganggu : ${pickBetween(raw,'Perangkat Terganggu :','Penyebab gangguan')}
+
+Penyebab gangguan: ${pickBetween(raw,'Penyebab gangguan:','Action')}
+
+Action : ${formatAction(pickBetween(raw,'Action :','PIC'))}
+
+PIC : ${pickBetween(raw,'PIC :','CC')}
+
+CC : ${cleanCC(pickBetween(raw,'CC :','Surveillance'))}
+
+Eskalasi : ${pickBetween(raw,'Eskalasi :','*Surveillance')}
+
+Surveillance ROC5 - ${pickBetween(raw,' ROC5 -','*REPORT INTERNAL TELKOM')}
+
+REPORT INTERNAL TELKOM
+DILARANG DISEBARLUASKAN KE LUAR TELKOM
+
+Contact Center:
+Free Call : 0800-1-353000
+TSEL : 0811-3081-500`.trim();
+    document.getElementById('eskOutput').value = result;
+}
+
+function convertWhatsApp() {
+    const rawFull = document.getElementById('eskInput').value;
+    const raw = stripOldFooter(rawFull);
+    const start = pickBetween(raw,'Start Time :','End Time');
+    const durasi = pickBetween(raw,'Duration Time :','Headline');
+    const tiket = pickBetween(raw,'Nomor Tiket :','NE');
+    const pic = pickBetween(raw,'PIC :','CC');
+    const headline = pickBetween(raw,'Headline :','Impacted Service');
+    const impactedService = formatMultiLineBlock(pickBetween(raw,'*Impacted Service* :','*Pelanggan Terganggu* :'));
+    const pelanggan = formatMultiLineBlock(pickBetween(raw,'*Pelanggan Terganggu* :','Perangkat Terganggu'));
+    const perangkat = pickBetween(raw,'Perangkat Terganggu :','Penyebab gangguan');
+    const penyebab = pickBetween(raw,'Penyebab gangguan:','Action');
+    const ticketState = detectTicketState(raw);
+    const lastAction = getLastAction(raw);
+    
+    let progressLine = ticketState === 'CLOSED' ? `sudah CLOSED setelah ${lastAction}` : `Progres sampai saat ini : ${lastAction}`;
+    let closingLine = ticketState === 'CLOSED' ? `Demikian kami sampaikan, gangguan dengan tiket ${tiket} sudah CLOSED.` : `Demikian kami sampaikan, gangguan dengan tiket ${tiket} masih dalam pengecekan.`;
+    
+    const wa = `Kepada : GM TA Bpk @,
+Head Of Regional Jatim Balnus Bpk @
+
+${buildWACriticalLine(raw)} sejak ${start}
+${progressLine}
+
+DOWNTIME : ${durasi}
+
+Headline : ${headline}
+
+Impacted Service : ${impactedService}
+
+Pelanggan Terganggu : ${pelanggan}
+
+Perangkat Terganggu : ${perangkat}
+
+Penyebab gangguan : ${penyebab}
+
+PIC : ${pic}
+
+${closingLine}
+
+Terima kasih atas perhatiannya.
+
+${formatWAFooter(raw)}`.trim();
+    document.getElementById('eskOutputWA').value = wa;
+}
+
+function buildWACriticalLine(raw) {
+    let cause = detectCauseFromHeadline(raw);
+    if (!cause) { 
+        const upper = raw.toUpperCase(); 
+        cause = upper.includes('GPON') ? 'GPON DOWN' : (upper.includes('FEEDER') ? 'FEEDER PUTUS' : 'AKSES DOWN'); 
+    }
+    
+    let lokasi = pickBetween(raw, 'LOKASI :', 'Urgency');
+    if (!lokasi || lokasi === '-') lokasi = pickBetween(raw, 'LOKASI :', 'Start Time');
+    if (!lokasi || lokasi === '-') lokasi = 'STO';
+    
+    return `Kami laporkan gangguan CRITICAL akibat ${cause} di STO ${lokasi}`;
+}
+
+function detectCauseFromHeadline(raw) { 
+    const headline = pickBetween(raw, 'Headline :', 'Impacted Service').toUpperCase(); 
+    if (!headline || headline === '-') return null; 
+    if (headline.includes('FEEDER')) return 'FEEDER PUTUS'; 
+    if (headline.includes('GPON')) return 'GPON DOWN'; 
+    return null; 
+}
+
+function detectTicketState(raw) { 
+    const status = pickBetween(raw,'Current status :','Nomor Tiket').toUpperCase(); 
+    if (status.includes('CLOSED')) return 'CLOSED'; 
+    if (raw.toUpperCase().includes(' CLOSED')) return 'CLOSED'; 
+    return 'UPDATE'; 
+}
+
+function getLastAction(raw) { 
+    const actionBlock = pickBetween(raw,'Action :','PIC'); 
+    if (!actionBlock || actionBlock === '-') return '-'; 
+    const parts = actionBlock.split(/\d{2}:\d{2}\sWIB\s*:/i).map(p => p.trim()).filter(Boolean); 
+    let last = parts.length ? parts[parts.length - 1] : actionBlock; 
+    return last.replace(/\d{2}:\d{2}\sWIB/gi, '').trim(); 
+}
+
+function stripOldFooter(raw) { 
+    const idx = raw.search(/Surveillance\s+ROC/i); 
+    if (idx === -1) return raw; 
+    return raw.substring(0, idx).trim(); 
+}
+
+function formatWAFooter(raw) { 
+    const rocName = extractROCName(raw) || '-'; 
+    return `Surveillance ROC5 - ${rocName}\n\nEskalasi : HoD Bpk @\n\nCC : EVP Teritory III Bpk @ , SM ROC DAN SM RAM, GM TA, MGR TA, MGR FBB, MGR AODM, MGR OM RAM\n\n*REPORT INTERNAL TIDAK UNTUK DISEBARKAN KE PIHAK LUAR*\n\nContact Center:\nFree Call : 0800-1-353000\nTSEL : 0811-3081-500\n\n${getLastUpdate(raw)}`.trim(); 
+}
+
+function getLastUpdate(raw) { 
+    const m = raw.match(/Last update\s*:\s*(.+)/i); 
+    return m ? `Last update : ${m[1].trim()}` : ''; 
+}
+
+function copyEskalasi() { 
+    const o = document.getElementById('eskOutput'); 
+    o.select(); 
+    document.execCommand('copy'); 
+    alert('Data eskalasi berhasil di-copy'); 
+}
+
+function copyWA() { 
+    const o = document.getElementById('eskOutputWA'); 
+    o.select(); 
+    document.execCommand('copy'); 
+    alert('Format WhatsApp berhasil di-copy'); 
+}
+
+// ================= CRA MODULE =================
+let CRA_DATA = [];
+
+function getStatusClass(val) { 
+    if (val === 'ON SCHEDULE') return 'on'; 
+    if (val === 'CANCEL') return 'cancel'; 
+    return 'wait'; 
+}
+
+function parseCRACSV(text) { 
+    text = text.replace(/^\uFEFF/, ''); 
+    const lines = text.split(/\r?\n/).filter(l => l.trim()); 
+    if (!lines.length) return []; 
+    
+    let delimiter = ','; 
+    if (lines[0].includes(';')) delimiter = ';'; 
+    if (lines[0].includes('\t')) delimiter = '\t'; 
+    
+    const headers = lines.shift().split(delimiter).map(h => h.trim()); 
+    
+    return lines.map(line => { 
+        const cols = line.split(delimiter); 
+        const o = {}; 
+        headers.forEach((h, i) => { 
+            o[h] = (cols[i] || '').trim(); 
+        }); 
+        return o; 
+    }); 
+}
+
+function getCRANumber(noCRA = '') { 
+    const m = noCRA.match(/CRA\.(\d+)/i); 
+    return m ? m[1] : null; 
+}
+
+function renderCRA(data) {
+    // 🆕 APLIKASIKAN FILTER REGIONAL
+    const filteredData = filterCRAByRegional(data);
+    CURRENT_CRA_DATA = [...filteredData];
+    
+    const tbody = document.querySelector('#craTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!filteredData.length) { 
+        tbody.innerHTML = `<tr><td colspan="10" class="empty">Data CRA tidak ditemukan</td></tr>`; 
+        updateCRACounter(filteredData);
+        updateMiniCRAStats(filteredData);  // 🆕 UPDATE MINI STATS
+        return; 
+    }
+    
+    const processedKeys = new Set();
+    const priorityData = filteredData.filter(row => { 
+        const reg = (row.regional || '').toUpperCase(); 
+        const key = row.noCRA; 
+        if (reg.includes('REG 5') || reg.includes('ALL REG')) { 
+            if (!processedKeys.has(key)) { 
+                processedKeys.add(key); 
+                return true; 
+            } 
+        } 
+        return false; 
+    });
+    
+    const reg4Data = filteredData.filter(row => { 
+        const reg = (row.regional || '').toUpperCase(); 
+        const key = row.noCRA; 
+        if (reg.includes('REG 4') && !processedKeys.has(key)) { 
+            processedKeys.add(key); 
+            return true; 
+        } 
+        return false; 
+    });
+    
+    const sortedData = [...priorityData, ...reg4Data];
+    let no = 1;
+    
+    sortedData.forEach(row => { 
+        if (!row.status) row.status = 'BELUM DIISI'; 
+        
+        const tr = document.createElement('tr'); 
+        tr.innerHTML = `
+            <td>${no++}</td>
+            <td><select class="cra-status ${getStatusClass(row.status)}">
+                <option ${row.status === 'ON SCHEDULE' ? 'selected' : ''}>ON SCHEDULE</option>
+                <option ${row.status === 'BELUM DIISI' ? 'selected' : ''}>BELUM DIISI</option>
+                <option ${row.status === 'CANCEL' ? 'selected' : ''}>CANCEL</option>
+            </select></td>
+            <td>${row.noCRA || ''}</td>
+            <td>${row.deskripsi || ''}</td>
+            <td>${row.lokasi ? row.lokasi.join(', ') : ''}</td>
+            <td>${row.kota || ''}</td>
+            <td>${row.regional || ''}</td>
+            <td>${row.pic || ''}</td>
+            <td>${row.tanggal || ''}</td>
+            <td>${row.waktu || ''}</td>
+            <td>${row.crq || ''}</td>
+        `;
+        
+        // 🆕 UPDATE COUNTER DAN MINI STATS SAAT STATUS BERUBAH
+        tr.querySelector('select').addEventListener('change', e => { 
+            row.status = e.target.value; 
+            e.target.className = `cra-status ${getStatusClass(row.status)}`;
+            
+            // Update counter dan mini stats setelah status berubah
+            updateCRACounter(CURRENT_CRA_DATA);
+            updateMiniCRAStats(CURRENT_CRA_DATA);
+        }); 
+        
+        tbody.appendChild(tr); 
+    });
+    
+    // 🆕 UPDATE COUNTER SETELAH FILTER
+    updateCRACounter(filteredData);
+    
+    // 🆕 UPDATE MINI STATS DI SEBELAH CHECKBOX
+    updateMiniCRAStats(filteredData);
+}
+
+function formatExcelDate(v) { 
+    if (!v) return ''; 
+    if (v instanceof Date) return v.toISOString().split('T')[0]; 
+    if (typeof v === 'number') return new Date(Math.round((v - 25569) * 86400 * 1000)).toISOString().split('T')[0]; 
+    return v; 
+}
+
+function pickField(row, names = []) { 
+    for (const key of Object.keys(row)) { 
+        const clean = key.toUpperCase().replace(/\s+/g,' ').trim(); 
+        for (const n of names) { 
+            if (clean === n.toUpperCase()) return row[key]; 
+        } 
+    } 
+    return ''; 
+}
+
+function processCRA(rawData) {
+    const map = new Map();
+    
+    rawData.forEach(row => {
+        const regional = (row['REGIONAL'] || '').toUpperCase();
+        if (!regional.includes('REG 5') && !regional.includes('ALL REG') && !regional.includes('REG 4')) return;
+        
+        const noCRA = row['No CRA'] || row['NO CRA'] || '';
+        const key = getCRANumber(noCRA);
+        if (!key) return;
+        
+        const lokasiRaw = row['LOKASI'] || '';
+        const lokasiArr = lokasiRaw.split(',').map(l => l.trim()).filter(Boolean);
+        
+        if (!map.has(key)) {
+            map.set(key, { 
+                noCRA, 
+                deskripsi: row['JUDUL'] || row['DESKRIPSI'] || row['DESCRIPTION'] || '', 
+                lokasi: [...lokasiArr], 
+                regional: row['REGIONAL'] || '', 
+                kota: row['WITEL'] || row['KOTA'] || row['CITY'] || '', 
+                segment: row['SEGMENT'] || '', 
+                pic: row['PIC'] || '', 
+                tanggal: formatExcelDate(pickField(row, ['TGL_MULAI','TGL MULAI','TANGGAL','DATE'])), 
+                waktu: pickField(row, ['WAKTU SETEMPAT','WAKTU','JAM','START-END','START - END']), 
+                durasi: row['DURASI'] || '', 
+                tipe: row['TIPE'] || '', 
+                pelaksana: row['PELAKSANA'] || '', 
+                metode: row['METODE'] || '', 
+                crq: row['CRQ'] || '',
+                status: 'BELUM DIISI'
+            });
+        } else { 
+            const existing = map.get(key); 
+            lokasiArr.forEach(l => { 
+                if (!existing.lokasi.includes(l)) existing.lokasi.push(l); 
+            }); 
+        }
+    });
+    
+    CRA_DATA = Array.from(map.values());
+    
+    // 🆕 SIMPAN DATA ASLI DAN DATA YANG SEDANG DITAMPILKAN
+    ORIGINAL_CRA_DATA = [...CRA_DATA];
+    CURRENT_CRA_DATA = [...CRA_DATA];
+    
+    updateCRACounter(CURRENT_CRA_DATA);
+    renderCRA(CURRENT_CRA_DATA);
+}
+
+// ================= FILTER REGIONAL UNTUK CRA =================
+function filterCRAByRegional(data) {
+    const reg5Checked = document.getElementById('filterReg5')?.checked || false;
+    const reg4Checked = document.getElementById('filterReg4')?.checked || false;
+    
+    // Jika tidak ada yang dicentang, tampilkan semua
+    if (!reg5Checked && !reg4Checked) {
+        return data;
+    }
+    
+    // Filter berdasarkan regional
+    return data.filter(item => {
+        const regional = (item.regional || '').toString().toUpperCase();
+        
+        const isReg5 = regional.includes('REG5') || regional.includes('REG 5');
+        const isReg4 = regional.includes('REG4') || regional.includes('REG 4');
+        
+        if (reg5Checked && reg4Checked) {
+            // Keduanya dicentang -> tampilkan REG5 ATAU REG4
+            return isReg5 || isReg4;
+        } else if (reg5Checked) {
+            // Hanya REG5
+            return isReg5;
+        } else if (reg4Checked) {
+            // Hanya REG4
+            return isReg4;
+        }
+        return false;
+    });
+}
+
+// 🆕 FUNGSI UNTUK MENERAPKAN FILTER SAAT CHECKBOX BERUBAH
+function applyCRAFilter() {
+    if (ORIGINAL_CRA_DATA.length > 0) {
+        console.log("🔄 Menerapkan filter CRA...");
+        const reg5Checked = document.getElementById('filterReg5')?.checked;
+        const reg4Checked = document.getElementById('filterReg4')?.checked;
+        console.log(`Filter - REG5: ${reg5Checked}, REG4: ${reg4Checked}`);
+        renderCRA(ORIGINAL_CRA_DATA);
+    }
+}
+
+function updateCRACounter(data) {
+    const reg5Count = data.filter(row => { 
+        const reg = (row.regional || '').toUpperCase(); 
+        return reg.includes('REG 5') || reg.includes('ALL REG'); 
+    }).length;
+    
+    const reg4Count = data.filter(row => { 
+        const reg = (row.regional || '').toUpperCase(); 
+        return reg.includes('REG 4'); 
+    }).length;
+    
+    const totalCount = data.length;
+    const reg5El = document.getElementById('craReg5Count');
+    const reg4El = document.getElementById('craReg4Count');
+    const totalEl = document.getElementById('craTotalCount');
+    
+    if (reg5El) reg5El.textContent = reg5Count;
+    if (reg4El) reg4El.textContent = reg4Count;
+    if (totalEl) totalEl.textContent = totalCount;
+	
+	// 🆕 Update mini stats juga
+    updateMiniCRAStats(data);
+}
+
+// ================= UPDATE MINI STATISTICS DI SEBELAH CHECKBOX =================
+function updateMiniCRAStats(data) {
+    const onSchedule = data.filter(r => r.status === "ON SCHEDULE").length;
+    const cancel = data.filter(r => r.status === "CANCEL").length;
+    const belum = data.filter(r => r.status === "BELUM DIISI" || !r.status || r.status === "").length;
+    
+    const onEl = document.getElementById('miniOnSchedule');
+    const cancelEl = document.getElementById('miniCancel');
+    const belumEl = document.getElementById('miniBelum');
+    
+    if (onEl) {
+        onEl.textContent = onSchedule;
+        // Animasi sedikit
+        onEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(onEl) onEl.style.transform = 'scale(1)'; }, 150);
+    }
+    if (cancelEl) {
+        cancelEl.textContent = cancel;
+        cancelEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(cancelEl) cancelEl.style.transform = 'scale(1)'; }, 150);
+    }
+    if (belumEl) {
+        belumEl.textContent = belum;
+        belumEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(belumEl) belumEl.style.transform = 'scale(1)'; }, 150);
+    }
+}
+
+
+function parseCRAExcel(arrayBuffer) { 
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' }); 
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]; 
+    return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true, cellDates: true }); 
+}
+
+document.getElementById('craFile')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+    
+    if (ext === 'xls' || ext === 'xlsx') { 
+        reader.onload = evt => { 
+            const data = parseCRAExcel(evt.target.result); 
+            processCRA(data); 
+            CRA_RESULT = CRA_DATA; 
+            window.CRA_RESULT = CRA_RESULT; 
+            window.DISTRICT_DB = DISTRICT_DB; 
+        }; 
+        reader.readAsArrayBuffer(file); 
+        return; 
+    }
+    
+    reader.onload = () => { 
+        const data = parseCRACSV(reader.result); 
+        processCRA(data); 
+        CRA_RESULT = CRA_DATA; 
+        window.CRA_RESULT = CRA_RESULT; 
+        window.DISTRICT_DB = DISTRICT_DB; 
+        updateCRACounter(CRA_DATA); 
+		updateMiniCRAStats(filteredData);
+    }; 
+    reader.readAsText(file);
+});
+
+function statusWithIcon(status) { 
+    if (status === 'ON SCHEDULE') return 'ON SCHEDULE ✅'; 
+    if (status === 'CANCEL') return 'CANCEL ❌'; 
+    return 'BELUM DIISI ⌛️'; 
+}
+
+function exportCRAtoExcel() { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_DATA;
+    
+    if (!dataToExport.length) { 
+        alert('Data CRA kosong'); 
+        return; 
+    } 
+    
+    const rows = dataToExport.map((row, i) => ({ 
+        No: i + 1, 
+        Status: statusWithIcon(row.status), 
+        No_CRA: row.noCRA, 
+        Judul: row.deskripsi, 
+        Lokasi: row.lokasi.join(', '), 
+        Regional: row.regional, 
+        PIC: row.pic, 
+        Tanggal: row.tanggal, 
+        Waktu: row.waktu, 
+        CRQ: row.crq 
+    })); 
+    
+    const ws = XLSX.utils.json_to_sheet(rows); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, 'CRA Reg 5'); 
+    XLSX.writeFile(wb, 'CRA_REG5.xlsx'); 
+}
+
+function exportCRAtoTXT() { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_DATA;
+    
+    if (!dataToExport.length) { 
+        alert('Data CRA kosong'); 
+        return; 
+    } 
+    
+    const total = dataToExport.length; 
+    const count = { 'ON SCHEDULE': 0, 'CANCEL': 0, 'BELUM DIISI': 0 }; 
+    
+    dataToExport.forEach(r => { 
+        const s = r.status || 'BELUM DIISI'; 
+        count[s]++; 
+    }); 
+    
+    let txt = `KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\n\nON SCHEDULE : ${count['ON SCHEDULE']}\nCANCEL : ${count['CANCEL']}\nBELUM DIISI : ${count['BELUM DIISI']}\nTOTAL : ${total}\n\n\n`; 
+    
+    dataToExport.forEach((row, i) => { 
+        txt += `${i + 1}. ${statusWithIcon(row.status || 'BELUM DIISI')}\n${row.noCRA}\n${row.deskripsi}\nRegional : ${row.regional}\nTgl : ${row.tanggal} ${row.waktu}\nPIC : ${row.pic}\nCRQ : ${row.crq}\n\nLokasi : ${row.lokasi.join(', ')}\n\n\n--------------------------------------------------\n\n`; 
+    }); 
+    
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' }); 
+    const url = URL.createObjectURL(blob); 
+    const a = document.createElement('a'); 
+    a.href = url; 
+    a.download = 'CRA_MALAM_INI.txt'; 
+    a.click(); 
+    URL.revokeObjectURL(url); 
+}
+
+document.getElementById("btnExportTXTAmel")?.addEventListener("click", function() { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_RESULT;
+    
+    if (!dataToExport || dataToExport.length === 0) { 
+        alert("Data CRA kosong."); 
+        return; 
+    } 
+    
+    let hasil = []; 
+    let total = dataToExport.length; 
+    let onSchedule = dataToExport.filter(r => r.status === "ON SCHEDULE").length; 
+    let cancel = dataToExport.filter(r => r.status === "CANCEL").length; 
+    let belumDiisi = dataToExport.filter(r => r.status === "BELUM DIISI" || !r.status).length; 
+    
+    hasil.push(`KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\nON SCHEDULE : ${onSchedule}\nCANCEL : ${cancel}\nBELUM DIISI : ${belumDiisi}\nTOTAL : ${total}\n\n`); 
+    
+    dataToExport.forEach((row, index) => { 
+        let noCraFull = row.noCRA || ""; 
+        let noCra = noCraFull.split("/")[0].trim(); 
+        let judul = row.deskripsi || ""; 
+        let region = (row.kota || "").toUpperCase(); 
+        let pic = PIC_DB[region] || ""; 
+        let lokasi = Array.isArray(row.lokasi) ? row.lokasi.join(", ") : (row.lokasi || ""); 
+        hasil.push(`${index + 1}. ${noCra}\nKEGIATAN : ${judul}\nREGION : ${region}\nLOKASI : ${lokasi}\nPIC : ${pic}\n\n`); 
+    }); 
+    
+    const blob = new Blob([hasil.join("\n")], { type: "text/plain" }); 
+    const url = URL.createObjectURL(blob); 
+    const a = document.createElement("a"); 
+    a.href = url; 
+    a.download = "EXPORT_TXT_PERMINTAAN_BU_AMEL.txt"; 
+    a.click(); 
+    URL.revokeObjectURL(url); 
+});
+
+// ================= BUTTON RESUME CRA =================
+document.getElementById("btnResumeCRA").addEventListener("click", () => {
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToResume = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_RESULT;
+    
+    if (!dataToResume.length) { 
+        alert("Data CRA kosong."); 
+        return; 
+    }
+    
+    const mainDistricts = ["DENPASAR", "FLORES", "KUPANG", "MATARAM", "JEMBER", "LAMONGAN", "MADIUN", "MALANG", "SIDOARJO", "SURABAYA", "PEKALONGAN", "YOGYAKARTA", "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"];
+    let resume = {}; 
+    
+    mainDistricts.forEach(district => { 
+        resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 }; 
+    }); 
+    resume["UNMAPPED"] = { total: 0, on: 0, belum: 0, cancel: 0 };
+    
+    const manualMapping = { 
+        "SBY": "SURABAYA", "SURABAYA": "SURABAYA", "SURABAYA SELATAN": "SURABAYA",
+        "SURABAYA UTARA": "SURABAYA", "SURABAYA TIMUR": "SURABAYA", "SURABAYA BARAT": "SURABAYA",
+        "SURABAYA PUSAT": "SURABAYA", "MADURA": "SURABAYA", "BANGKALAN": "SURABAYA",
+        "SAMPANG": "SURABAYA", "PAMEKASAN": "SURABAYA", "SUMENEP": "SURABAYA",
+        "MLG": "MALANG", "MALANG": "MALANG", "BATU": "MALANG", "BLITAR": "MALANG",
+        "TULUNGAGUNG": "MALANG", "SDA": "SIDOARJO", "SIDOARJO": "SIDOARJO",
+        "MOJOKERTO": "SIDOARJO", "PASURUAN": "SIDOARJO", "JOMBANG": "SIDOARJO",
+        "JBR": "JEMBER", "JEMBER": "JEMBER", "BANYUWANGI": "JEMBER",
+        "BONDOWOSO": "JEMBER", "SITUBONDO": "JEMBER", "LUMAJANG": "JEMBER",
+        "PROBOLINGGO": "JEMBER", "MDN": "MADIUN", "MADIUN": "MADIUN",
+        "KEDIRI": "MADIUN", "NGANJUK": "MADIUN", "MAGETAN": "MADIUN",
+        "NGAWI": "MADIUN", "PACITAN": "MADIUN", "PONOROGO": "MADIUN",
+        "TRENGGALEK": "MADIUN", "LMG": "LAMONGAN", "LAMONGAN": "LAMONGAN",
+        "GRESIK": "LAMONGAN", "BOJONEGORO": "LAMONGAN", "TUBAN": "LAMONGAN",
+        "DPS": "DENPASAR", "DENPASAR": "DENPASAR", "BADUNG": "DENPASAR",
+        "GIANYAR": "DENPASAR", "TABANAN": "DENPASAR", "BANGLI": "DENPASAR",
+        "KARANGASEM": "DENPASAR", "KLUNGKUNG": "DENPASAR", "UBUD": "DENPASAR",
+        "SINGARAJA": "DENPASAR", "KUTA": "DENPASAR", "NUSA DUA": "DENPASAR",
+        "SANUR": "DENPASAR", "SEMINYAK": "DENPASAR", "BALI": "DENPASAR",
+        "FLORES": "FLORES", "ENDE": "FLORES", "MAUMERE": "FLORES",
+        "LARANTUKA": "FLORES", "LABUAN BAJO": "FLORES", "RUTENG": "FLORES",
+        "BAJAWA": "FLORES", "KUPANG": "KUPANG", "TIMOR": "KUPANG",
+        "SUMBA": "KUPANG", "ROTE": "KUPANG", "ATAMBUA": "KUPANG",
+        "KEFAMENANU": "KUPANG", "SOE": "KUPANG", "WAIKABUBAK": "KUPANG",
+        "WAINGAPU": "KUPANG", "NTT": "KUPANG", "MATARAM": "MATARAM",
+        "LOMBOK": "MATARAM", "SUMBAWA": "MATARAM", "BIMA": "MATARAM",
+        "PRAYA": "MATARAM", "SELONG": "MATARAM", "NTB": "MATARAM",
+        "PKL": "PEKALONGAN", "PEKALONGAN": "PEKALONGAN",
+        "JOGJA": "YOGYAKARTA", "YOGYAKARTA": "YOGYAKARTA", "DIY": "YOGYAKARTA",
+        "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO",
+        "MAGELANG": "MAGELANG", "SMR": "SEMARANG", "SEMARANG": "SEMARANG",
+        "JATENG": "SEMARANG", "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA",
+        "KUDUS": "SEMARANG", "GOMBONG": "MAGELANG", "KEBUMEN": "MAGELANG",
+        "PURWOREJO": "MAGELANG", "TEMANGGUNG": "MAGELANG", "TEGAL": "PEKALONGAN",
+        "SLAWI": "PEKALONGAN", "PEMALANG": "PEKALONGAN", "BATANG": "PEKALONGAN",
+        "BREBES": "PEKALONGAN", "CILACAP": "PURWOKERTO", "WONOSOBO": "PURWOKERTO",
+        "BANJARNEGARA": "PURWOKERTO", "DEMAK": "SEMARANG", "JEPARA": "SEMARANG",
+        "PATI": "SEMARANG", "REMBANG": "SEMARANG", "BLORA": "SURAKARTA",
+        "SRAGEN": "SURAKARTA", "WONOGIRI": "SURAKARTA", "KLATEN": "SURAKARTA",
+        "SUKOHARJO": "SURAKARTA", "BOYOLALI": "SURAKARTA", "SALATIGA": "SEMARANG",
+        "BANTUL": "YOGYAKARTA", "SLEMAN": "YOGYAKARTA", "KULON PROGO": "YOGYAKARTA",
+        "GUNUNGKIDUL": "YOGYAKARTA"
+    };
+    
+    let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
+    
+    // 🆕 GUNAKAN dataToResume (CURRENT_CRA_DATA)
+    dataToResume.forEach((row) => { 
+        let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim(); 
+        let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim(); 
+        let district = "UNMAPPED"; 
+        
+        if (manualMapping[witel]) { 
+            district = manualMapping[witel]; 
+        } else { 
+            const words = witel.split(/[\s\/,-]+/); 
+            for (let word of words) { 
+                if (word.length >= 2 && manualMapping[word]) { 
+                    district = manualMapping[word]; 
+                    break; 
+                } 
+            } 
+        } 
+        
+        if (district === "UNMAPPED") { 
+            if (witel.includes("DPS") || witel.includes("BALI") || witel.includes("DENPASAR") || witel.includes("SINGARAJA")) { 
+                district = "DENPASAR"; 
+            } else if (witel.includes("FLORES") || witel.includes("ENDE") || witel.includes("MAUMERE")) { 
+                district = "FLORES"; 
+            } else if (witel.includes("KUPANG") || witel.includes("TIMOR") || witel.includes("SUMBA")) { 
+                district = "KUPANG"; 
+            } else if (witel.includes("MATARAM") || witel.includes("LOMBOK") || witel.includes("NTB")) { 
+                district = "MATARAM"; 
+            } else if (witel.includes("LAMONGAN") || witel.includes("GRESIK") || witel.includes("TUBAN")) { 
+                district = "LAMONGAN"; 
+            } else if (witel.includes("MADIUN") || witel.includes("KEDIRI") || witel.includes("NGANJUK")) { 
+                district = "MADIUN"; 
+            } else if (witel.includes("PEKALONGAN") || witel.includes("PKL") || witel.includes("TEGAL") || witel.includes("CIREBON")) { 
+                district = "PEKALONGAN"; 
+            } else if (witel.includes("YOGYAKARTA") || witel.includes("JOGJA") || witel.includes("DIY")) { 
+                district = "YOGYAKARTA"; 
+            } else if (witel.includes("PURWOKERTO") || witel.includes("PWT") || witel.includes("BANYUMAS")) { 
+                district = "PURWOKERTO"; 
+            } else if (witel.includes("MAGELANG")) { 
+                district = "MAGELANG"; 
+            } else if (witel.includes("SEMARANG") || witel.includes("SMR") || witel.includes("JATENG")) { 
+                district = "SEMARANG"; 
+            } else if (witel.includes("SURAKARTA") || witel.includes("SOLO")) { 
+                district = "SURAKARTA"; 
+            } 
+        } 
+        
+        if (!resume[district]) resume[district] = { total: 0, on: 0, belum: 0, cancel: 0 }; 
+        resume[district].total++; 
+        totalAll++; 
+        
+        if (row.status === "ON SCHEDULE") { 
+            resume[district].on++; 
+            totalOn++; 
+        } else if (row.status === "BELUM DIISI" || !row.status || row.status === "") { 
+            resume[district].belum++; 
+            totalBelum++; 
+        } else { 
+            resume[district].cancel++; 
+            totalCancel++; 
+        } 
+    });
+    
+    let text = "Resume CRA\n[Jumlah CRA | On Schedule | Belum Diisi | NOK/Cancel]\n\n";
+    let index = 1;
+    const displayOrder = ["SURABAYA", "MALANG", "SIDOARJO", "JEMBER", "MADIUN", "LAMONGAN", "DENPASAR", "FLORES", "KUPANG", "MATARAM", "PEKALONGAN", "YOGYAKARTA", "PURWOKERTO", "MAGELANG", "SEMARANG", "SURAKARTA"];
+    
+    displayOrder.forEach(district => { 
+        if (resume[district]) { 
+            let d = resume[district]; 
+            text += `${index}. District ${district} : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`; 
+            index++; 
+        } 
+    });
+    
+    if (resume["UNMAPPED"] && resume["UNMAPPED"].total > 0) { 
+        let d = resume["UNMAPPED"]; 
+        text += `${index}. District UNMAPPED : [ ${d.total} | ${d.on} | ${d.belum} | ${d.cancel} ]\n`; 
+    }
+    
+    text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
+    showResumeModal(text);
+    
+    // AUTO SCROLL KE MODAL RESUME CRA
+    setTimeout(() => {
+        const modal = document.getElementById("resumeModalNew");
+        if (modal) {
+            modal.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }, 100);
+});
+
+function showResumeModal(text) {
+    let oldModal = document.getElementById("resumeModalNew"); 
+    if (oldModal) oldModal.remove();
+    
+    let oldOverlay = document.getElementById("resumeOverlay"); 
+    if (oldOverlay) oldOverlay.remove();
+    
+    const overlay = document.createElement("div"); 
+    overlay.id = "resumeOverlay"; 
+    overlay.style.cssText = `display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 9998;`; 
+    document.body.appendChild(overlay);
+    
+    const modal = document.createElement("div"); 
+    modal.id = "resumeModalNew"; 
+    modal.style.cssText = `display: block; position: fixed; top: 200px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; max-height: 80vh; z-index: 9999;`;
+    modal.innerHTML = `<div style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #e2e8f0; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin:0; font-size:24px; background:linear-gradient(135deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Resume CRA</h3>
+            <button id="closeResumeTop" style="background:none; border:none; font-size:28px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+        <textarea id="resumeTextNew" style="width:100%; height:300px; margin-bottom:20px; resize:none; font-family:monospace; font-size:13px; padding:15px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;">${text}</textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="copyResumeNew" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:10px; cursor:pointer;">📋 Copy</button>
+            <button id="closeResumeNew" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:10px; cursor:pointer;">✕ Close</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+    
+    document.getElementById("copyResumeNew").addEventListener("click", () => { 
+        navigator.clipboard.writeText(document.getElementById("resumeTextNew").value); 
+        alert("Resume berhasil di-copy!"); 
+    });
+    
+    const closeModal = () => { 
+        modal.remove(); 
+        overlay.remove(); 
+    };
+    
+    document.getElementById("closeResumeNew").addEventListener("click", closeModal);
+    document.getElementById("closeResumeTop").addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
+}
+
+
+// ================= INIT =================
+document.addEventListener('DOMContentLoaded', () => {
+    loadWorkzones();
+    loadPICMapping();
+    loadDistrictMapping();
+    loadNOPDatabase();
+    renderStatusFilter();
+    
+    // 🆕 EVENT LISTENER UNTUK CHECKBOX FILTER CRA
+    const filterReg5 = document.getElementById('filterReg5');
+    const filterReg4 = document.getElementById('filterReg4');
+    
+    if (filterReg5) {
+        filterReg5.addEventListener('change', () => applyCRAFilter());
+    }
+    if (filterReg4) {
+        filterReg4.addEventListener('change', () => applyCRAFilter());
+    }
+    
+    const eskInput = document.getElementById('eskInput');
+    if (eskInput) { 
+        eskInput.addEventListener('input', () => { 
+            if (eskInput.value.trim().length > 10) convertEskalasi(); 
+        }); 
+    }
+    
+    document.getElementById('btnCopy')?.addEventListener('click', copyEskalasi);
+    document.getElementById('btnExportCRA')?.addEventListener('click', exportCRAtoExcel);
+    document.getElementById('btnExportTXT')?.addEventListener('click', exportCRAtoTXT);
+});
