@@ -6,6 +6,8 @@ let DB_REG4 = new Set();
 // SIMPAN DATA CSV ASLI
 let ALL_DATA = [];
 let CRA_RESULT = [];
+let ORIGINAL_CRA_DATA = [];  // 🆕 SIMPAN DATA CRA ASLI UNTUK FILTER
+let CURRENT_CRA_DATA = [];   // 🆕 DATA YANG SEDANG DITAMPILKAN
 
 // FILTER STATUS AKTIF
 let ACTIVE_STATUSES = [];
@@ -1536,17 +1538,23 @@ function getCRANumber(noCRA = '') {
 }
 
 function renderCRA(data) {
+    // 🆕 APLIKASIKAN FILTER REGIONAL
+    const filteredData = filterCRAByRegional(data);
+    CURRENT_CRA_DATA = [...filteredData];
+    
     const tbody = document.querySelector('#craTable tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
     
-    if (!data.length) { 
+    if (!filteredData.length) { 
         tbody.innerHTML = `<tr><td colspan="10" class="empty">Data CRA tidak ditemukan</td></tr>`; 
+        updateCRACounter(filteredData);
+        updateMiniCRAStats(filteredData);  // 🆕 UPDATE MINI STATS
         return; 
     }
     
     const processedKeys = new Set();
-    const priorityData = data.filter(row => { 
+    const priorityData = filteredData.filter(row => { 
         const reg = (row.regional || '').toUpperCase(); 
         const key = row.noCRA; 
         if (reg.includes('REG 5') || reg.includes('ALL REG')) { 
@@ -1558,7 +1566,7 @@ function renderCRA(data) {
         return false; 
     });
     
-    const reg4Data = data.filter(row => { 
+    const reg4Data = filteredData.filter(row => { 
         const reg = (row.regional || '').toUpperCase(); 
         const key = row.noCRA; 
         if (reg.includes('REG 4') && !processedKeys.has(key)) { 
@@ -1593,13 +1601,24 @@ function renderCRA(data) {
             <td>${row.crq || ''}</td>
         `;
         
+        // 🆕 UPDATE COUNTER DAN MINI STATS SAAT STATUS BERUBAH
         tr.querySelector('select').addEventListener('change', e => { 
             row.status = e.target.value; 
-            e.target.className = `cra-status ${getStatusClass(row.status)}`; 
+            e.target.className = `cra-status ${getStatusClass(row.status)}`;
+            
+            // Update counter dan mini stats setelah status berubah
+            updateCRACounter(CURRENT_CRA_DATA);
+            updateMiniCRAStats(CURRENT_CRA_DATA);
         }); 
         
         tbody.appendChild(tr); 
     });
+    
+    // 🆕 UPDATE COUNTER SETELAH FILTER
+    updateCRACounter(filteredData);
+    
+    // 🆕 UPDATE MINI STATS DI SEBELAH CHECKBOX
+    updateMiniCRAStats(filteredData);
 }
 
 function formatExcelDate(v) { 
@@ -1648,7 +1667,8 @@ function processCRA(rawData) {
                 tipe: row['TIPE'] || '', 
                 pelaksana: row['PELAKSANA'] || '', 
                 metode: row['METODE'] || '', 
-                crq: row['CRQ'] || '' 
+                crq: row['CRQ'] || '',
+                status: 'BELUM DIISI'
             });
         } else { 
             const existing = map.get(key); 
@@ -1659,8 +1679,55 @@ function processCRA(rawData) {
     });
     
     CRA_DATA = Array.from(map.values());
-    updateCRACounter(CRA_DATA);
-    renderCRA(CRA_DATA);
+    
+    // 🆕 SIMPAN DATA ASLI DAN DATA YANG SEDANG DITAMPILKAN
+    ORIGINAL_CRA_DATA = [...CRA_DATA];
+    CURRENT_CRA_DATA = [...CRA_DATA];
+    
+    updateCRACounter(CURRENT_CRA_DATA);
+    renderCRA(CURRENT_CRA_DATA);
+}
+
+// ================= FILTER REGIONAL UNTUK CRA =================
+function filterCRAByRegional(data) {
+    const reg5Checked = document.getElementById('filterReg5')?.checked || false;
+    const reg4Checked = document.getElementById('filterReg4')?.checked || false;
+    
+    // Jika tidak ada yang dicentang, tampilkan semua
+    if (!reg5Checked && !reg4Checked) {
+        return data;
+    }
+    
+    // Filter berdasarkan regional
+    return data.filter(item => {
+        const regional = (item.regional || '').toString().toUpperCase();
+        
+        const isReg5 = regional.includes('REG5') || regional.includes('REG 5');
+        const isReg4 = regional.includes('REG4') || regional.includes('REG 4');
+        
+        if (reg5Checked && reg4Checked) {
+            // Keduanya dicentang -> tampilkan REG5 ATAU REG4
+            return isReg5 || isReg4;
+        } else if (reg5Checked) {
+            // Hanya REG5
+            return isReg5;
+        } else if (reg4Checked) {
+            // Hanya REG4
+            return isReg4;
+        }
+        return false;
+    });
+}
+
+// 🆕 FUNGSI UNTUK MENERAPKAN FILTER SAAT CHECKBOX BERUBAH
+function applyCRAFilter() {
+    if (ORIGINAL_CRA_DATA.length > 0) {
+        console.log("🔄 Menerapkan filter CRA...");
+        const reg5Checked = document.getElementById('filterReg5')?.checked;
+        const reg4Checked = document.getElementById('filterReg4')?.checked;
+        console.log(`Filter - REG5: ${reg5Checked}, REG4: ${reg4Checked}`);
+        renderCRA(ORIGINAL_CRA_DATA);
+    }
 }
 
 function updateCRACounter(data) {
@@ -1682,7 +1749,39 @@ function updateCRACounter(data) {
     if (reg5El) reg5El.textContent = reg5Count;
     if (reg4El) reg4El.textContent = reg4Count;
     if (totalEl) totalEl.textContent = totalCount;
+	
+	// 🆕 Update mini stats juga
+    updateMiniCRAStats(data);
 }
+
+// ================= UPDATE MINI STATISTICS DI SEBELAH CHECKBOX =================
+function updateMiniCRAStats(data) {
+    const onSchedule = data.filter(r => r.status === "ON SCHEDULE").length;
+    const cancel = data.filter(r => r.status === "CANCEL").length;
+    const belum = data.filter(r => r.status === "BELUM DIISI" || !r.status || r.status === "").length;
+    
+    const onEl = document.getElementById('miniOnSchedule');
+    const cancelEl = document.getElementById('miniCancel');
+    const belumEl = document.getElementById('miniBelum');
+    
+    if (onEl) {
+        onEl.textContent = onSchedule;
+        // Animasi sedikit
+        onEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(onEl) onEl.style.transform = 'scale(1)'; }, 150);
+    }
+    if (cancelEl) {
+        cancelEl.textContent = cancel;
+        cancelEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(cancelEl) cancelEl.style.transform = 'scale(1)'; }, 150);
+    }
+    if (belumEl) {
+        belumEl.textContent = belum;
+        belumEl.style.transform = 'scale(1.1)';
+        setTimeout(() => { if(belumEl) belumEl.style.transform = 'scale(1)'; }, 150);
+    }
+}
+
 
 function parseCRAExcel(arrayBuffer) { 
     const workbook = XLSX.read(arrayBuffer, { type: 'array' }); 
@@ -1716,6 +1815,7 @@ document.getElementById('craFile')?.addEventListener('change', e => {
         window.CRA_RESULT = CRA_RESULT; 
         window.DISTRICT_DB = DISTRICT_DB; 
         updateCRACounter(CRA_DATA); 
+		updateMiniCRAStats(filteredData);
     }; 
     reader.readAsText(file);
 });
@@ -1727,12 +1827,15 @@ function statusWithIcon(status) {
 }
 
 function exportCRAtoExcel() { 
-    if (!CRA_DATA.length) { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_DATA;
+    
+    if (!dataToExport.length) { 
         alert('Data CRA kosong'); 
         return; 
     } 
     
-    const rows = CRA_DATA.map((row, i) => ({ 
+    const rows = dataToExport.map((row, i) => ({ 
         No: i + 1, 
         Status: statusWithIcon(row.status), 
         No_CRA: row.noCRA, 
@@ -1752,22 +1855,25 @@ function exportCRAtoExcel() {
 }
 
 function exportCRAtoTXT() { 
-    if (!CRA_DATA.length) { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_DATA;
+    
+    if (!dataToExport.length) { 
         alert('Data CRA kosong'); 
         return; 
     } 
     
-    const total = CRA_DATA.length; 
+    const total = dataToExport.length; 
     const count = { 'ON SCHEDULE': 0, 'CANCEL': 0, 'BELUM DIISI': 0 }; 
     
-    CRA_DATA.forEach(r => { 
+    dataToExport.forEach(r => { 
         const s = r.status || 'BELUM DIISI'; 
         count[s]++; 
     }); 
     
     let txt = `KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\n\nON SCHEDULE : ${count['ON SCHEDULE']}\nCANCEL : ${count['CANCEL']}\nBELUM DIISI : ${count['BELUM DIISI']}\nTOTAL : ${total}\n\n\n`; 
     
-    CRA_DATA.forEach((row, i) => { 
+    dataToExport.forEach((row, i) => { 
         txt += `${i + 1}. ${statusWithIcon(row.status || 'BELUM DIISI')}\n${row.noCRA}\n${row.deskripsi}\nRegional : ${row.regional}\nTgl : ${row.tanggal} ${row.waktu}\nPIC : ${row.pic}\nCRQ : ${row.crq}\n\nLokasi : ${row.lokasi.join(', ')}\n\n\n--------------------------------------------------\n\n`; 
     }); 
     
@@ -1781,20 +1887,23 @@ function exportCRAtoTXT() {
 }
 
 document.getElementById("btnExportTXTAmel")?.addEventListener("click", function() { 
-    if (!CRA_RESULT || CRA_RESULT.length === 0) { 
-        alert("Data CRA belum diupload."); 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToExport = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_RESULT;
+    
+    if (!dataToExport || dataToExport.length === 0) { 
+        alert("Data CRA kosong."); 
         return; 
     } 
     
     let hasil = []; 
-    let total = CRA_RESULT.length; 
-    let onSchedule = CRA_RESULT.filter(r => r.status === "ON SCHEDULE").length; 
-    let cancel = CRA_RESULT.filter(r => r.status === "CANCEL").length; 
-    let belumDiisi = CRA_RESULT.filter(r => r.status === "BELUM DIISI").length; 
+    let total = dataToExport.length; 
+    let onSchedule = dataToExport.filter(r => r.status === "ON SCHEDULE").length; 
+    let cancel = dataToExport.filter(r => r.status === "CANCEL").length; 
+    let belumDiisi = dataToExport.filter(r => r.status === "BELUM DIISI" || !r.status).length; 
     
     hasil.push(`KEGIATAN CRA MALAM INI : ${total} KEGIATAN\n\nON SCHEDULE : ${onSchedule}\nCANCEL : ${cancel}\nBELUM DIISI : ${belumDiisi}\nTOTAL : ${total}\n\n`); 
     
-    CRA_RESULT.forEach((row, index) => { 
+    dataToExport.forEach((row, index) => { 
         let noCraFull = row.noCRA || ""; 
         let noCra = noCraFull.split("/")[0].trim(); 
         let judul = row.deskripsi || ""; 
@@ -1815,7 +1924,10 @@ document.getElementById("btnExportTXTAmel")?.addEventListener("click", function(
 
 // ================= BUTTON RESUME CRA =================
 document.getElementById("btnResumeCRA").addEventListener("click", () => {
-    if (!CRA_RESULT.length) { 
+    // 🆕 GUNAKAN DATA YANG SUDAH DIFILTER
+    const dataToResume = CURRENT_CRA_DATA.length > 0 ? CURRENT_CRA_DATA : CRA_RESULT;
+    
+    if (!dataToResume.length) { 
         alert("Data CRA kosong."); 
         return; 
     }
@@ -1861,7 +1973,6 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
         "PWT": "PURWOKERTO", "PURWOKERTO": "PURWOKERTO", "BANYUMAS": "PURWOKERTO",
         "MAGELANG": "MAGELANG", "SMR": "SEMARANG", "SEMARANG": "SEMARANG",
         "JATENG": "SEMARANG", "SOLO": "SURAKARTA", "SURAKARTA": "SURAKARTA",
-        // Tambahan mapping untuk SEMARANG (KUDUS dll)
         "KUDUS": "SEMARANG", "GOMBONG": "MAGELANG", "KEBUMEN": "MAGELANG",
         "PURWOREJO": "MAGELANG", "TEMANGGUNG": "MAGELANG", "TEGAL": "PEKALONGAN",
         "SLAWI": "PEKALONGAN", "PEMALANG": "PEKALONGAN", "BATANG": "PEKALONGAN",
@@ -1876,7 +1987,8 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     
     let totalAll = 0, totalOn = 0, totalBelum = 0, totalCancel = 0;
     
-    CRA_RESULT.forEach((row) => { 
+    // 🆕 GUNAKAN dataToResume (CURRENT_CRA_DATA)
+    dataToResume.forEach((row) => { 
         let witelRaw = (row.kota || row.witel || row.WITEL || row.KOTA || row.CITY || row.LOKASI || "").toString().trim(); 
         let witel = witelRaw.toUpperCase().replace(/[^\w\s\/-]/g, ' ').replace(/\s+/g, ' ').trim(); 
         let district = "UNMAPPED"; 
@@ -1956,9 +2068,9 @@ document.getElementById("btnResumeCRA").addEventListener("click", () => {
     
     text += `\nTotal : [ ${totalAll} | ${totalOn} | ${totalBelum} | ${totalCancel} ]`;
     showResumeModal(text);
-	
-	// AUTO SCROLL KE MODAL RESUME CRA
-	setTimeout(() => {
+    
+    // AUTO SCROLL KE MODAL RESUME CRA
+    setTimeout(() => {
         const modal = document.getElementById("resumeModalNew");
         if (modal) {
             modal.scrollIntoView({
@@ -2012,13 +2124,25 @@ function showResumeModal(text) {
     overlay.addEventListener("click", closeModal);
 }
 
+
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
     loadWorkzones();
     loadPICMapping();
     loadDistrictMapping();
-    loadNOPDatabase();  // TAMBAHKAN UNTUK LOAD NOP DATABASE
+    loadNOPDatabase();
     renderStatusFilter();
+    
+    // 🆕 EVENT LISTENER UNTUK CHECKBOX FILTER CRA
+    const filterReg5 = document.getElementById('filterReg5');
+    const filterReg4 = document.getElementById('filterReg4');
+    
+    if (filterReg5) {
+        filterReg5.addEventListener('change', () => applyCRAFilter());
+    }
+    if (filterReg4) {
+        filterReg4.addEventListener('change', () => applyCRAFilter());
+    }
     
     const eskInput = document.getElementById('eskInput');
     if (eskInput) { 
