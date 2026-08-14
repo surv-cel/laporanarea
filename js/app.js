@@ -1215,6 +1215,24 @@ function renderData(data) {
                 const c = REF_GROUP_COLORS[colorIdx];
                 card.style.backgroundColor = c.bg;
                 card.style.borderLeft = `6px solid ${c.border}`;
+
+                // ---- 🆕 badge INDUK / ANAK (no-copy → tidak ikut ter-copy) ----
+                const badge = document.createElement("span");
+                badge.className = "no-copy";
+
+                if (isParent) {
+                    // hitung jumlah anak di section ini untuk label induk
+                    const jmlAnak = items.filter(x => getReferParent(x.row["SUMMARY"]) === inc).length;
+                    badge.textContent = jmlAnak > 1 ? `🎯 INDUK • ${jmlAnak} ANAK` : "🎯 INDUK";
+                    badge.style.cssText = `display:inline-block;background:${c.border};color:#fff;font-size:.68rem;font-weight:800;letter-spacing:.5px;padding:3px 10px;border-radius:20px;margin:0 8px 6px 0;vertical-align:middle;box-shadow:0 2px 6px ${c.border}66;`;
+                } else {
+                    // anak: tunjukkan nomor induknya + sedikit menjorok ke dalam
+                    badge.textContent = `↳ ANAK → ${parentRef}`;
+                    badge.style.cssText = `display:inline-block;background:${c.border}1a;color:${c.border};border:1px dashed ${c.border};font-size:.68rem;font-weight:800;letter-spacing:.5px;padding:2px 10px;border-radius:20px;margin:0 8px 6px 0;vertical-align:middle;`;
+                    card.style.marginLeft = "30px"; // efek "bertingkat" di bawah induk
+                }
+
+                card.insertBefore(badge, card.firstChild);
             }
 
             box.appendChild(card);
