@@ -1248,6 +1248,21 @@ function renderData(data) {
 
 const STATUS_LIST = ['New', 'Draft', 'Analysis', 'Pending', 'Backend', 'FinalCheck', 'Resolved', 'Mediacare', 'Salamsim', 'Closed'];
 
+// ================= TAMBAHKAN FUNGSI INI (YANG HILANG) =================
+function renderStatusBadges(data) {
+    const box = document.getElementById('statusBadges');
+    if (!box) return;
+    box.innerHTML = '';
+
+    STATUS_LIST.forEach(status => {
+        const count = data.filter(row => (row['STATUS'] || '').toUpperCase() === status.toUpperCase()).length;
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = `${status} : ${count}`;
+        box.appendChild(badge);
+    });
+}
+
 function renderStatusFilter() {
     const box = document.getElementById('statusFilterBox');
     if (!box) return;
