@@ -1046,14 +1046,77 @@ function parseCSV(text) {
     });
 }
 
-// ================= RENDER DATA =================
-// 🆕 WL: versi ini sudah ditambah LAST UPDATE WORKLOG untuk JATIM & BALNUS
+// ================= 🆕 REFER: PALET WARNA GRUP INDUK-ANAK =================
+// Tiap induk dapat 1 warna; semua anaknya ikut warna induknya.
+const REF_GROUP_COLORS = [
+    { bg: "rgba(255, 99, 132, 0.16)", border: "#ff6384" },   // 1. merah muda
+    { bg: "rgba(54, 162, 235, 0.16)", border: "#36a2eb" },   // 2. biru
+    { bg: "rgba(255, 159, 64, 0.20)", border: "#ff9f40" },   // 3. oranye
+    { bg: "rgba(75, 192, 192, 0.16)", border: "#4bc0c0" },   // 4. tosca
+    { bg: "rgba(153, 102, 255, 0.16)", border: "#9966ff" },  // 5. ungu
+    { bg: "rgba(255, 205, 86, 0.25)", border: "#d4a900" },   // 6. kuning
+    { bg: "rgba(46, 204, 113, 0.16)", border: "#2ecc71" },   // 7. hijau
+    { bg: "rgba(231, 76, 160, 0.16)", border: "#e74ca0" }    // 8. magenta
+];
+
+// ================= 🆕 REFER: DETEKSI ANAK → AMBIL INC INDUKNYA =================
+// Menangkap: "MEREFER TIKET INC52089170", "MEREFER KE TIKET INC52097158"
+// (huruf besar/kecil tidak masalah). Kalau tidak ada → null.
+function getReferParent(summary) {
+    const m = String(summary || "").match(/MEREFER\s*(?:KE\s+)?TIKET\s+(INC\d+)/i);
+    return m ? m[1].toUpperCase() : null;
+}
+
+// ================= 🆕 REFER: SUSUN ULANG SATU SECTION =================
+// Hasil: induk tampil dulu, semua anaknya tepat di bawah induknya.
+// Anak yang induknya TIDAK ada di section itu tetap di posisi semula.
+function sortWithRefer(items) {
+    const incOf = it => (it.row["INCIDENT"] || "").toUpperCase();
+    const existing = new Set(items.map(incOf).filter(Boolean));
+
+    const result = [];
+    const used = new Set();
+
+    items.forEach((it, idx) => {
+        if (used.has(idx)) return;
+
+        const inc = incOf(it);
+        const parentRef = getReferParent(it.row["SUMMARY"]);
+
+        // ANAK yang induknya ada di section ini → jangan tampil di posisi asli,
+        // akan disisipkan tepat di bawah induknya
+        if (parentRef && existing.has(parentRef)) return;
+
+        result.push(it);
+        used.add(idx);
+
+        // kalau item ini INDUK → tarik semua anaknya tepat di bawahnya
+        items.forEach((child, cIdx) => {
+            if (used.has(cIdx)) return;
+            if (getReferParent(child.row["SUMMARY"]) === inc) {
+                result.push(child);
+                used.add(cIdx);
+            }
+        });
+    });
+
+    // pengaman: masukkan sisa item yang belum terpakai
+    items.forEach((it, idx) => {
+        if (!used.has(idx)) result.push(it);
+    });
+
+    return result;
+}
+
+/ ================= RENDER DATA =================
+// 🆕 REFER: versi baru — anak (MEREFER) tampil di bawah induknya,
+// satu grup diberi warna background yang sama, penomoran mengikuti urutan baru.
 function renderData(data) {
     console.log("🟢 renderData() DIPANGGIL, data length:", data.length);
     const jatimBox = document.querySelector("#jatim .content");
     const balnusBox = document.querySelector("#balnus .content");
     const reg4Box = document.querySelector("#reg4 .content");
-    
+
     jatimBox.innerHTML = "";
     balnusBox.innerHTML = "";
     if (reg4Box) reg4Box.innerHTML = "";
@@ -1061,22 +1124,16 @@ function renderData(data) {
     let total = 0;
     let bb = 0, ip = 0;
     let d = 0, f = 0, g = 0;
-    let noJ = 1, noB = 1, noReg4 = 1;
 
-    // 🆕 WL: tampung jam worklog per region untuk chip header
-    const wlJatimUsed = [];
-    const wlBalnusUsed = [];
+    // 🆕 REFER: tampung dulu per section, baru diurutkan & dirender
+    const itemsJatim = [];
+    const itemsBalnus = [];
+    const itemsReg4 = [];
 
     data.forEach(row => {
         const summary = row["SUMMARY"] || "";
-        const update = row["WORKLOG SUMMARY"] || "-";
         const zone = (row["WORKZONE"] || "").toUpperCase();
-        const ttr = row["TTR END TO END"] || "";
-        const durasiFormatted = formatDurasi(ttr);
 
-        // 🆕 WL: ambil kolom LAST UPDATE WORKLOG langsung dari CSV, buang milidetik
-        const wlTime = formatWLTime(row["LAST UPDATE WORKLOG"]);
-        
         total++;
 
         if (summary.includes("(REPAIR) TRA T3") || summary.includes("(RECOVERY) TRA T3")) bb++;
@@ -1085,31 +1142,90 @@ function renderData(data) {
         if (summary.includes("FEEDER")) f++;
         if (summary.includes("GPON")) g++;
 
-        const card = document.createElement("div");
-        card.className = "card";
-        const cardContent = `${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
-        
+        const entry = { row };
+
         if (summary.includes("GAMAS R4") || summary.toUpperCase().includes("GAMAS R4")) {
-            card.innerHTML = `<b>${noReg4++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
-            if (reg4Box) reg4Box.appendChild(card);
+            itemsReg4.push(entry);
         } else if (DB_REG4.has(zone)) {
-            card.innerHTML = `<b>${noReg4++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
-            if (reg4Box) reg4Box.appendChild(card);
+            itemsReg4.push(entry);
         } else if (DB_JATIM.has(zone)) {
-            card.innerHTML = `<b>${noJ++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
-            // 🆕 WL: baris Update WL hanya tampil di web, tidak ikut ke-copy (class no-copy)
-            if (wlTime) { addWLLine(card, wlTime); wlJatimUsed.push(wlTime); }
-            jatimBox.appendChild(card);
+            itemsJatim.push(entry);
         } else if (DB_BALNUS.has(zone)) {
-            card.innerHTML = `<b>${noB++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
-            card.dataset.workzone = zone;  // TAMBAHKAN: simpan workzone untuk NOP mapping
-            // 🆕 WL: baris Update WL hanya tampil di web, tidak ikut ke-copy (class no-copy)
-            if (wlTime) { addWLLine(card, wlTime); wlBalnusUsed.push(wlTime); }
-            balnusBox.appendChild(card);
+            itemsBalnus.push(entry);
         }
     });
 
-    // 🆕 WL: chip "last update" paling baru di header JATIM & BALNUS
+    // 🆕 REFER: urutkan → induk dulu, anak langsung di bawahnya
+    const sortedJatim = sortWithRefer(itemsJatim);
+    const sortedBalnus = sortWithRefer(itemsBalnus);
+    const sortedReg4 = sortWithRefer(itemsReg4);
+
+    // jam last update worklog untuk chip header (fitur lama, tetap jalan)
+    const wlJatimUsed = [];
+    const wlBalnusUsed = [];
+
+    // 🆕 REFER: penghitung warna grup (bergilir tiap induk, lintas section)
+    let groupColorCounter = 0;
+
+    // 🆕 REFER: render satu section dengan urutan baru + nomor baru + warna grup
+    const renderSection = (box, items, withWL, wlBucket, setWorkzone) => {
+        if (!box) return;
+        let no = 1;
+        const colorOfParent = new Map(); // INC induk -> index warna
+
+        items.forEach(it => {
+            const row = it.row;
+            const summary = row["SUMMARY"] || "";
+            const update = row["WORKLOG SUMMARY"] || "-";
+            const ttr = row["TTR END TO END"] || "";
+            const durasiFormatted = formatDurasi(ttr);
+            const wlTime = formatWLTime(row["LAST UPDATE WORKLOG"]);
+            const inc = (row["INCIDENT"] || "").toUpperCase();
+            const parentRef = getReferParent(summary);
+
+            // ---- tentukan warna grup (induk & semua anaknya sama) ----
+            let colorIdx = -1;
+            const isParent = items.some(x => getReferParent(x.row["SUMMARY"]) === inc);
+            if (isParent) {
+                if (!colorOfParent.has(inc)) {
+                    colorOfParent.set(inc, groupColorCounter % REF_GROUP_COLORS.length);
+                    groupColorCounter++;
+                }
+                colorIdx = colorOfParent.get(inc);
+            } else if (parentRef && colorOfParent.has(parentRef)) {
+                // anak selalu dirender SETELAH induknya (dijamin sortWithRefer)
+                colorIdx = colorOfParent.get(parentRef);
+            }
+
+            // ---- buat kartu (isi teks sama persis seperti dulu) ----
+            const card = document.createElement("div");
+            card.className = "card";
+            const cardContent = `${summary}<br><b>Update :</b> ${update}<br><b>⏱️ Durasi :</b> ${durasiFormatted}`;
+            card.innerHTML = `<b>${no++}. ${row["INCIDENT"] || '-'}</b><br>${cardContent}`;
+
+            if (setWorkzone) card.dataset.workzone = (row["WORKZONE"] || "").toUpperCase(); // NOP BALNUS
+
+            if (withWL && wlTime) {
+                addWLLine(card, wlTime);   // Update WL (tidak ikut ke-copy)
+                wlBucket.push(wlTime);
+            }
+
+            // ---- warnai grup induk-anak ----
+            if (colorIdx >= 0) {
+                const c = REF_GROUP_COLORS[colorIdx];
+                card.style.backgroundColor = c.bg;
+                card.style.borderLeft = `6px solid ${c.border}`;
+            }
+
+            box.appendChild(card);
+        });
+    };
+
+    renderSection(jatimBox, sortedJatim, true, wlJatimUsed, false);
+    renderSection(balnusBox, sortedBalnus, true, wlBalnusUsed, true);
+    renderSection(reg4Box, sortedReg4, false, null, false);
+
+    // chip last update di header JATIM & BALNUS (fitur lama, tetap jalan)
     setHeaderWLTime("wlHeaderJatim", wlJatimUsed);
     setHeaderWLTime("wlHeaderBalnus", wlBalnusUsed);
 
@@ -1121,10 +1237,10 @@ function renderData(data) {
     document.getElementById("distriCount").textContent = `DISTRIBUSI : ${d}`;
 
     renderStatusBadges(data);
-	
-	// JUMLAH GAMAS
-	updateRegionStats(data);
-    
+
+    // JUMLAH GAMAS
+    updateRegionStats(data);
+
     if (!jatimBox.children.length) jatimBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
     if (!balnusBox.children.length) balnusBox.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
     if (reg4Box && !reg4Box.children.length) reg4Box.innerHTML = `<div class="empty">Data tidak ditemukan</div>`;
